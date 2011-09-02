@@ -109,7 +109,6 @@ EXPORT_SYMBOL(__put_user_8);
 #endif
 
 	/* crypto hash */
-EXPORT_SYMBOL(sha_transform);
 
 	/* gcc lib functions */
 EXPORT_SYMBOL(__ashldi3);
