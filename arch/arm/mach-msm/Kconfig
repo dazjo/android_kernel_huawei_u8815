@@ -1579,12 +1579,12 @@ config MSM_CPU_FREQ_MIN
 	default 245760
 
 config MSM7X27AA_OVERCLOCK
-	bool "Enable overclock for Huawei G300"
+	bool "Enable overclock for MSM7X27AA"
 	depends on MSM_CPU_FREQ_SET_MIN_MAX
 	default n
 	help
-	  Enable overclock for Huawei G300. NOT tested. Make sure to enable
-	  Max CPU Frequency to 1008000
+	  Enable overclock for MSM7X27AA (U8815/U8818). Make sure to set
+	  CONFIG_MSM_CPU_FREQ_MAX to 1008000.
 
 endif # CPU_FREQ_MSM
 
