@@ -213,7 +213,7 @@ static struct clkctl_acpu_speed pll0_960_pll1_196_pll2_1200_pll4_800[] = {
 
 /* 7627aa PLL4 @ 1008MHz with GSM capable modem */
 static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200_pll4_1008[] = {
-//       Id  CPU-KHz            PLL SEL DIV AHB-KHz ADIV VDD AXI-KHz
+//    Id  CPU-KHz       PLL       SEL DIV AHB-KHz ADIV VDD AXI-KHz
 	{ 0,   19200, ACPU_PLL_TCXO,  0,  0,   2400,   3,  0,  30720 },
 	{ 0,   61440,    ACPU_PLL_1,  1,  3,   7680,   3,  1,  61440 },
 	{ 1,  122880,    ACPU_PLL_1,  1,  1,  15360,   3,  2,  61440 },
@@ -224,7 +224,7 @@ static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200_pll4_1008[] = {
 	{ 0,  504000,    ACPU_PLL_4,  6,  1,  63000,   3,  6, 160000 },
 	{ 1,  600000,    ACPU_PLL_2,  2,  1,  75000,   3,  6, 160000 },
 	{ 1, 1008000,    ACPU_PLL_4,  6,  0, 126000,   3,  7, 200000 },
-	#ifdef CONFIG_MSM7X27AA_OVERCLOCK
+#ifdef CONFIG_MSM7X27AA_OVERCLOCK
 	{ 1, 1036800,    ACPU_PLL_4,  6,  0, 129600,   3,  7, 200000 },
 	{ 1, 1056000,    ACPU_PLL_4,  6,  0, 132000,   3,  7, 200000 },
 	{ 1, 1113600,    ACPU_PLL_4,  6,  0, 139200,   3,  7, 200000 },
@@ -232,19 +232,13 @@ static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200_pll4_1008[] = {
 	{ 1, 1190400,    ACPU_PLL_4,  6,  0, 148800,   3,  7, 200000 },
 	{ 1, 1228800,    ACPU_PLL_4,  6,  0, 153600,   3,  7, 200000 },
 	{ 1, 1267200,    ACPU_PLL_4,  6,  0, 158400,   3,  7, 200000 },
-	{ 1, 1305600,    ACPU_PLL_4,  6,  0, 163200,   3,  7, 200000 },
-	// Up to 1.3GHz is stable but... Let's go bananas!!
+	{ 1, 1270000,    ACPU_PLL_4,  6,  0, 158750,   3,  7, 200000 },
+	{ 1, 1280000,    ACPU_PLL_4,  6,  0, 160000,   3,  7, 200000 },
+	{ 1, 1290000,    ACPU_PLL_4,  6,  0, 161250,   3,  7, 200000 },
+	{ 1, 1300000,    ACPU_PLL_4,  6,  0, 162500,   3,  7, 200000 },
 	{ 1, 1310720,    ACPU_PLL_4,  6,  0, 163840,   3,  7, 200000 },
 	{ 1, 1324800,    ACPU_PLL_4,  6,  0, 165600,   3,  7, 200000 },
-	/*
-	{ 1, 1344000,    ACPU_PLL_4,  6,  0, 168000,   3,  7, 200000 },
-	{ 1, 1382400,    ACPU_PLL_4,  6,  0, 172800,   3,  7, 200000 },
-	{ 1, 1420800,    ACPU_PLL_4,  6,  0, 177600,   3,  7, 200000 },
-	{ 1, 1459200,    ACPU_PLL_4,  6,  0, 182400,   3,  7, 200000 },
-	{ 1, 1497600,    ACPU_PLL_4,  6,  0, 187200,   3,  7, 200000 },
-	{ 1, 1536000,    ACPU_PLL_4,  6,  0, 192000,   3,  7, 200000 },
-	*/
-	#endif
+#endif
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0}, {0, 0, 0, 0} }
 };
 
@@ -519,7 +513,7 @@ static void acpuclk_set_div(const struct clkctl_acpu_speed *hunt_s)
 	// Perform overclocking if requested
 	if (hunt_s->a11clk_khz > 1008000) {
 		// Change the speed of PLL4
-		writel(hunt_s->a11clk_khz/19200,PLL4_L_VAL);
+		writel(hunt_s->a11clk_khz/19200, PLL4_L_VAL);
 		udelay(50);
 	}
 	#endif
