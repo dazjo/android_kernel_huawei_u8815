@@ -170,3 +170,11 @@ config CFG80211_ALLOW_RECONNECT
 
 	  Select this option ONLY for wlan drivers that are specifically
 	  built for such purposes.
+
+config CFG80211_WIPHY_ALLOC_HACK
+	bool "Guarantee page allocation success for wiphy"
+	depends on CFG80211
+	default n
+	help
+	  Use in situations where a page allocation failure causes
+	  a system hang or crash.
