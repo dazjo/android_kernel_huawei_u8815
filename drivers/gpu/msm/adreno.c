@@ -114,6 +114,7 @@ static struct adreno_device device_3d0 = {
 	.pfp_fw = NULL,
 	.pm4_fw = NULL,
 	.wait_timeout = 10000, /* in milliseconds */
+	.ib_check_level = 0,
 };
 
 
@@ -550,7 +551,10 @@ static int adreno_start(struct kgsl_device *device, unsigned int init_ram)
 
 	adreno_regwrite(device, REG_RBBM_SOFT_RESET, 0x00000000);
 
-	adreno_regwrite(device, REG_RBBM_CNTL, 0x00004442);
+	if (adreno_is_a200(adreno_dev))
+		adreno_regwrite(device, REG_RBBM_CNTL, 0x0000FFFF);
+	else
+		adreno_regwrite(device, REG_RBBM_CNTL, 0x00004442);
 
 	if (adreno_is_a225(adreno_dev)) {
 		/* Enable large instruction store for A225 */
@@ -644,6 +648,8 @@ adreno_recover_hang(struct kgsl_device *device)
 	unsigned int soptimestamp;
 	unsigned int eoptimestamp;
 	struct adreno_context *drawctxt;
+	struct kgsl_context *context;
+	int next = 0;
 
 	KGSL_DRV_ERR(device, "Starting recovery from 3D GPU hang....\n");
 	rb_buffer = vmalloc(rb->buffer_desc.size);
@@ -711,6 +717,24 @@ adreno_recover_hang(struct kgsl_device *device)
 		"Context that caused a GPU hang: %x\n", bad_context);
 
 	drawctxt->flags |= CTXT_FLAGS_GPU_HANG;
+
+	/*
+	 * Set the reset status of all contexts to
+	 * INNOCENT_CONTEXT_RESET_EXT except for the bad context
+	 * since thats the guilty party
+	 */
+	while ((context = idr_get_next(&device->context_idr, &next))) {
+		if (KGSL_CTX_STAT_GUILTY_CONTEXT_RESET_EXT !=
+			context->reset_status) {
+			if (context->devctxt != drawctxt)
+				context->reset_status =
+				KGSL_CTX_STAT_INNOCENT_CONTEXT_RESET_EXT;
+			else
+				context->reset_status =
+				KGSL_CTX_STAT_GUILTY_CONTEXT_RESET_EXT;
+		}
+		next = next + 1;
+	}
 
 	/* Restore valid commands in ringbuffer */
 	adreno_ringbuffer_restore(rb, rb_buffer, num_rb_contents);
@@ -874,12 +898,13 @@ int adreno_idle(struct kgsl_device *device, unsigned int timeout)
 	struct adreno_ringbuffer *rb = &adreno_dev->ringbuffer;
 	unsigned int rbbm_status;
 	unsigned long wait_timeout =
-	msecs_to_jiffies(adreno_dev->wait_timeout);
+		msecs_to_jiffies(adreno_dev->wait_timeout);
 	unsigned long wait_time;
 	unsigned long wait_time_part;
 	unsigned int msecs;
 	unsigned int msecs_first;
 	unsigned int msecs_part;
+
 	kgsl_cffdump_regpoll(device->id, REG_RBBM_STATUS << 2,
 		0x00000000, 0x80000000);
 	/* first, wait until the CP has consumed all the commands in
@@ -965,7 +990,7 @@ static int adreno_suspend_context(struct kgsl_device *device)
 	return status;
 }
 
-const struct kgsl_memdesc *adreno_find_region(struct kgsl_device *device,
+struct kgsl_memdesc *adreno_find_region(struct kgsl_device *device,
 						unsigned int pt_base,
 						unsigned int gpuaddr,
 						unsigned int size)
@@ -992,8 +1017,7 @@ const struct kgsl_memdesc *adreno_find_region(struct kgsl_device *device,
 		if (!kgsl_mmu_pt_equal(priv->pagetable, pt_base))
 			continue;
 		spin_lock(&priv->mem_lock);
-		entry = kgsl_sharedmem_find_region(priv, gpuaddr,
-						sizeof(unsigned int));
+		entry = kgsl_sharedmem_find_region(priv, gpuaddr, size);
 		if (entry) {
 			result = &entry->memdesc;
 			spin_unlock(&priv->mem_lock);
@@ -1037,7 +1061,7 @@ const struct kgsl_memdesc *adreno_find_region(struct kgsl_device *device,
 uint8_t *adreno_convertaddr(struct kgsl_device *device, unsigned int pt_base,
 			    unsigned int gpuaddr, unsigned int size)
 {
-	const struct kgsl_memdesc *memdesc;
+	struct kgsl_memdesc *memdesc;
 
 	memdesc = adreno_find_region(device, pt_base, gpuaddr, size);
 
