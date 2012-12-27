@@ -341,13 +341,11 @@ struct wiphy *wiphy_new(const struct cfg80211_ops *ops, int sizeof_priv)
 
 	alloc_size = sizeof(*rdev) + sizeof_priv;
 
-	rdev = kzalloc(alloc_size, GFP_KERNEL);
-
 #ifdef CONFIG_CFG80211_WIPHY_ALLOC_HACK
-	while(!rdev)
-		rdev = kzalloc(alloc_size, GFP_KERNEL);
+	rdev = kzalloc(alloc_size, GFP_KERNEL | __GFP_NOFAIL | __GFP_REPEAT);
+#else
+	rdev = kzalloc(alloc_size, GFP_KERNEL);
 #endif
-
 	if (!rdev)
 		return NULL;
 
