@@ -91,7 +91,11 @@ __tagtable(ATAG_CHARGE_FLAG, parse_tag_charge_flag);
 #define ATAG_FRAME_BUFFER_ID 0x4d534D79
 int __init parse_tag_frame_buffer(const struct tag *tags)
 {
+#ifdef CONFIG_FRAMEBUF_SELF_ADAPT_HACK
+	frame_buffer_size = tags->u.mem.size + 1024*1024;
+#else
 	frame_buffer_size = tags->u.mem.size;
+#endif
 	frame_buffer_start = tags->u.mem.start;
 	
     printk(KERN_DEBUG "%s: fb addr= 0x%x, size=0x%0x\n", __func__, frame_buffer_start, frame_buffer_size);
@@ -125,7 +129,11 @@ void get_frame_buffer_mem_region(__u32 *start_addr, __u32 *size)
 int __init parse_tag_cust_buffer(const struct tag * tags)
 {
 	cust_buffer_size = tags->u.mem.size;
+#ifdef CONFIG_FRAMEBUF_SELF_ADAPT_HACK
+	cust_buffer_start = tags->u.mem.start + 1024*1024;
+#else
 	cust_buffer_start = tags->u.mem.start;
+#endif
 	
     printk(KERN_DEBUG "%s: cust addr= 0x%x, size=0x%0x\n", __func__, cust_buffer_start, cust_buffer_size);
     return 0;

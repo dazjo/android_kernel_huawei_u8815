@@ -1834,18 +1834,6 @@ config HUAWEI_KERNEL_DEBUG
 	help
 	  Select Y if print HUAWEI log
 
-config HUAWEI_BT_BCM43XX
-	bool "Huawei BCM43XX Bluetooth"
-	default n
-	help
-	  Select Y to use Broadcom's BTLA stack. Used by BCM4330 and BCM4329.
-
-config HUAWEI_BT_WCN2243
-	bool "Qualcomm WCN2243 Bluetooth"
-	default n
-	help
-	  Select Y to use Qualcomm's BlueZ stack. Used by WCN2243. Not used in Huawei devices.
-
 choice
 	prompt "Power management timeout action"
 	default MSM_PM_TIMEOUT_HALT
@@ -2335,3 +2323,21 @@ config HUAWEI_RPC_CRASH_DEBUG
 	help
 	  Select Y if use rpc related logs.
 
+config HUAWEI_BT_BCM43XX
+	bool "Huawei BCM43XX Bluetooth"
+	default n
+	help
+	  Select Y to use Broadcom's BTLA stack. Used by BCM4330 and BCM4329.
+
+config HUAWEI_BT_WCN2243
+	bool "Qualcomm WCN2243 Bluetooth"
+	default n
+	help
+	  Select Y to use Qualcomm's BlueZ stack. Used by WCN2243. Not used in Huawei devices.
+
+config FRAMEBUF_SELF_ADAPT_HACK
+	bool "Huawei framebuffer memory hack"
+	default n
+	help
+	  Select Y to add an extra 1024*1024 to the framebuffer memory region determined by
+	  Huawei's bootloader. This is useful for booting on the Gingerbread bootloader.
