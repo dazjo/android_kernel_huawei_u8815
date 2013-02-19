@@ -1089,7 +1089,7 @@ out:
 }
 
 /* Enable the transmitter Interrupt */
-#if defined(CONFIG_HUAWEI_KERNEL)
+#if defined(CONFIG_HUAWEI_KERNEL) && defined(CONFIG_HUAWEI_BT_BCM43XX)
 /* lgh add calling callback for bluesleep here */
 extern void bluesleep_outgoing_data(void);
 #endif
@@ -1098,7 +1098,7 @@ static void msm_hs_start_tx_locked(struct uart_port *uport )
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
 
 	clk_enable(msm_uport->clk);
-#if defined(CONFIG_HUAWEI_KERNEL)
+#if defined(CONFIG_HUAWEI_KERNEL) && defined(CONFIG_HUAWEI_BT_BCM43XX)
 	/* lgh add for lpm here */
     printk(KERN_ERR "%s BCM bt 3.0 call bluesleep_outgoing_data\n", __FUNCTION__);
 	bluesleep_outgoing_data();
@@ -1600,7 +1600,7 @@ static const char *msm_hs_type(struct uart_port *port)
 }
 
 /* Called when port is opened */
-#if defined(CONFIG_HUAWEI_KERNEL)
+#if defined(CONFIG_HUAWEI_KERNEL) && defined(CONFIG_HUAWEI_BT_BCM43XX)
 /* lgh added for bluesleep */
 extern void bluesleep_uart_open(struct uart_port *uport);
 
@@ -1615,7 +1615,7 @@ static int msm_hs_startup(struct uart_port *uport)
 	struct circ_buf *tx_buf = &uport->state->xmit;
 	struct msm_hs_tx *tx = &msm_uport->tx;
 
-#if defined(CONFIG_HUAWEI_KERNEL)
+#if defined(CONFIG_HUAWEI_KERNEL) && defined(CONFIG_HUAWEI_BT_BCM43XX)
 	/*lgh added we should re-consider that whether here would bt called*/
     printk(KERN_ERR "%s BCM bt 3.0 call bluesleep_uart_open\n", __FUNCTION__);
 	bluesleep_uart_open(uport);
@@ -2009,7 +2009,7 @@ static int __init msm_serial_hs_init(void)
  *     - Disables the port
  *     - Unhook the ISR
  */
-#if defined(CONFIG_HUAWEI_KERNEL)
+#if defined(CONFIG_HUAWEI_KERNEL) && defined(CONFIG_HUAWEI_BT_BCM43XX)
 /* lgh add for bluesleep */
 extern void bluesleep_uart_close(struct uart_port *uport);
 
@@ -2018,7 +2018,7 @@ static void msm_hs_shutdown(struct uart_port *uport)
 {
 	unsigned long flags;
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
-#if defined(CONFIG_HUAWEI_KERNEL)
+#if defined(CONFIG_HUAWEI_KERNEL) && defined(CONFIG_HUAWEI_BT_BCM43XX)
 	/*lgh added for bluesleep */
     printk(KERN_ERR "%s BCM bt 3.0 call bluesleep_uart_close\n", __FUNCTION__);
 	bluesleep_uart_close(uport);

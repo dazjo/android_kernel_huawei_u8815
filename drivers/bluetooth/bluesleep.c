@@ -241,7 +241,7 @@ static void bluesleep_hostwake_task(unsigned long data)
  * Handles proper timer action when outgoing data is delivered to the
  * HCI line discipline. Sets BT_TXDATA.
  */
-#if defined(CONFIG_HUAWEI_KERNEL)
+#if defined(CONFIG_HUAWEI_KERNEL) && defined(CONFIG_HUAWEI_BT_BCM43XX)
 /*lgh remove static as this function will be call in msm_serial_hs.c */
 //static void bluesleep_outgoing_data(void)
 void bluesleep_outgoing_data(void)
@@ -254,7 +254,7 @@ static void bluesleep_outgoing_data(void)
 {
 	unsigned long irq_flags;
 
-#if defined(CONFIG_HUAWEI_KERNEL)
+#if defined(CONFIG_HUAWEI_KERNEL) && defined(CONFIG_HUAWEI_BT_BCM43XX)
 	BT_DBG("BCM  BT3.0 bluesleep_outgoing_data");	
 #else
 	BT_DBG("google BT2.0 bluesleep_outgoing_data");	
@@ -274,7 +274,7 @@ static void bluesleep_outgoing_data(void)
 	spin_unlock_irqrestore(&rw_lock, irq_flags);
 }
 
-#if defined(CONFIG_HUAWEI_KERNEL)
+#if defined(CONFIG_HUAWEI_KERNEL) && defined(CONFIG_HUAWEI_BT_BCM43XX)
 /*lgh add bluesleep_uart_open and bluesleep_uart_close to register uport and un-register uport*/
 void bluesleep_uart_open(struct uart_port *uport)
 {
