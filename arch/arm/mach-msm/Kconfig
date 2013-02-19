@@ -1820,4 +1820,16 @@ config MSM_L2_SPM
 	  Enabling this driver allows configuring L2 SPM for low power modes
 	  on supported chipsets.
 
+config HUAWEI_BT_BCM43XX
+	bool "Huawei BCM43XX Bluetooth"
+	default n
+	help
+	  Select Y to use Broadcom's BTLA stack. Used by BCM4330 and BCM4329.
+
+config HUAWEI_BT_WCN2243
+	bool "Qualcomm WCN2243 Bluetooth"
+	default n
+	help
+	  Select Y to use Qualcomm's BlueZ stack. Used by WCN2243. Not used in Huawei devices.
+
 endif

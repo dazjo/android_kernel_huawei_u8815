@@ -150,7 +150,7 @@ enum {
 	GPIO_CAM_GP_LED_EN2,
 };
 
-#ifdef HUAWEI_BT_WCN2243
+#ifdef CONFIG_HUAWEI_BT_WCN2243
 #define GPIO_BT_SYS_REST 5
 #endif
 
@@ -158,7 +158,7 @@ enum {
 /* delet one line */
 
 #ifdef CONFIG_HUAWEI_KERNEL
-#ifdef HUAWEI_BT_BCM4330
+#ifdef CONFIG_HUAWEI_BT_BCM43XX
 /* BCM BT GPIOs config*/
 #define GPIO_BT_UART_RTS   43 
 #define GPIO_BT_UART_CTS   44
@@ -255,7 +255,7 @@ compass_gs_position_type  get_compass_gs_position(void)
 	/* FM Platform power and shutdown routines */
 #define FPGA_MSM_CNTRL_REG2 0x90008010
 /* Recover QC original code if QC BT chip (WCN2243) is used. */
-#if (defined(HUAWEI_BT_WCN2243) || (!defined(CONFIG_HUAWEI_KERNEL)))
+#if (defined(CONFIG_HUAWEI_BT_WCN2243) || (!defined(CONFIG_HUAWEI_KERNEL)))
 static void config_pcm_i2s_mode(int mode)
 {
 	void __iomem *cfg_ptr;
@@ -677,7 +677,7 @@ EXPORT_SYMBOL(ath_scatter_buf_get);
 #if defined(CONFIG_BT) && defined(CONFIG_MARIMBA_CORE)
 
 /* Recover QC code if QC BT chip (WCN2243) is used. */
-#if (defined(HUAWEI_BT_WCN2243) || (!defined(CONFIG_HUAWEI_KERNEL)))
+#if (defined(CONFIG_HUAWEI_BT_WCN2243) || (!defined(CONFIG_HUAWEI_KERNEL)))
 
 static struct platform_device msm_bt_power_device = {
 	.name = "bt_power",
@@ -1218,12 +1218,12 @@ static struct amplifier_platform_data audio_amplifier_data = {
 };
 #endif
 /* the following definition only used for WCN2243 */
-#if (defined(HUAWEI_BT_WCN2243) || (!defined(CONFIG_HUAWEI_KERNEL)))
+#if (defined(CONFIG_HUAWEI_BT_WCN2243) || (!defined(CONFIG_HUAWEI_KERNEL)))
 static struct marimba_platform_data marimba_pdata = {
 	.slave_id[SLAVE_ID_BAHAMA_FM]        = BAHAMA_SLAVE_ID_FM_ADDR,
 	.slave_id[SLAVE_ID_BAHAMA_QMEMBIST]  = BAHAMA_SLAVE_ID_QMEMBIST_ADDR,
 /* Recover QC code if QC BT chip (WCN2243) is used. */
-/* #if (defined(HUAWEI_BT_WCN2243) || (!defined(CONFIG_HUAWEI_KERNEL))) */
+/* #if (defined(CONFIG_HUAWEI_BT_WCN2243) || (!defined(CONFIG_HUAWEI_KERNEL))) */
 	.bahama_setup                        = msm_bahama_setup_power,
 	.bahama_shutdown                     = msm_bahama_shutdown_power,
 	.bahama_core_config                  = msm_bahama_core_config,
@@ -1340,7 +1340,7 @@ static struct gs_platform_data gs_kxtik_platform_data = {
 };
 #endif 
 /* Code for BCM4330 */
-#if defined(CONFIG_HUAWEI_KERNEL) && defined(HUAWEI_BT_BCM4330)
+#if defined(CONFIG_HUAWEI_KERNEL) && defined(CONFIG_HUAWEI_BT_BCM43XX)
 static struct platform_device msm_bt_power_device = {
     .name = "bt_power",
     .id     = -1
@@ -1662,7 +1662,7 @@ static struct i2c_board_info bahama_devices[] = {
 };
 #endif
 #else
-#if defined(CONFIG_BT) && defined(CONFIG_MARIMBA_CORE) && defined(HUAWEI_BT_WCN2243)
+#if defined(CONFIG_BT) && defined(CONFIG_MARIMBA_CORE) && defined(CONFIG_HUAWEI_BT_WCN2243)
 static struct i2c_board_info bahama_devices[] = {
 {
 	/* I2C address changed from 0x1 to 0xc */
@@ -1704,7 +1704,7 @@ static void __init register_i2c_devices(void)
 				ARRAY_SIZE(bahama_devices));
 #endif
 #else
-#if defined(CONFIG_BT) && defined(CONFIG_MARIMBA_CORE) && defined(HUAWEI_BT_WCN2243)
+#if defined(CONFIG_BT) && defined(CONFIG_MARIMBA_CORE) && defined(CONFIG_HUAWEI_BT_WCN2243)
 	i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
 				bahama_devices,
 				ARRAY_SIZE(bahama_devices));
@@ -2804,7 +2804,7 @@ static struct mmc_platform_data sdc4_plat_data = {
 #endif
 /* The following config was used for WCN2243 only. 0xFD means wake.*/
 #ifdef CONFIG_HUAWEI_KERNEL
-#if defined(CONFIG_SERIAL_MSM_HS) && defined(HUAWEI_BT_WCN2243)
+#if defined(CONFIG_SERIAL_MSM_HS) && defined(CONFIG_HUAWEI_BT_WCN2243)
 static struct msm_serial_hs_platform_data msm_uart_dm1_pdata = {
 	.inject_rx_on_wakeup	= 1,
 	.rx_to_inject		= 0xFD,
@@ -4657,12 +4657,12 @@ static struct platform_device *surf_ffa_devices[] __initdata = {
 #endif
 	&msm_kgsl_3d0,
 /* for WCN2243 */
-#if defined(CONFIG_BT) && defined(HUAWEI_BT_WCN2243)
+#if defined(CONFIG_BT) && defined(CONFIG_HUAWEI_BT_WCN2243)
 	&msm_bt_power_device,
 #endif
 
 /* for BCM_4330 */
-#if defined(CONFIG_BT) && defined(HUAWEI_BT_BCM4330)
+#if defined(CONFIG_BT) && defined(CONFIG_HUAWEI_BT_BCM43XX)
     &msm_bt_power_device,
     &msm_bluesleep_device,	
 #endif
@@ -6239,7 +6239,7 @@ static void camera_sensor_pwd_config(void)
 }
 #endif
 
-#ifdef HUAWEI_BT_BCM4330
+#ifdef CONFIG_HUAWEI_BT_BCM43XX
 static void bt_wake_msm_config(void)
 {
     /*distinguish the bt_wake_msm gpio by get_hw_bt_wakeup_gpio_type*/
@@ -6267,7 +6267,7 @@ static void __init msm7x2x_init(void)
 	msm7x27a_cfg_uart2dm_serial();
 /* The following config was used for WCN2243 only. */
 #ifdef CONFIG_HUAWEI_KERNEL
-#if defined(CONFIG_SERIAL_MSM_HS) && defined(HUAWEI_BT_WCN2243)
+#if defined(CONFIG_SERIAL_MSM_HS) && defined(CONFIG_HUAWEI_BT_WCN2243)
 	msm_uart_dm1_pdata.wakeup_irq = gpio_to_irq(UART1DM_RX_GPIO);
 	msm_device_uart_dm1.dev.platform_data = &msm_uart_dm1_pdata;
 #endif
@@ -6312,7 +6312,7 @@ static void __init msm7x2x_init(void)
 		/*before camera probe, config the camera pwd gpio*/
 		camera_sensor_pwd_config();
 #endif
-#ifdef HUAWEI_BT_BCM4330
+#ifdef CONFIG_HUAWEI_BT_BCM43XX
                 /*before bt probe, config the bt_wake_msm gpio*/
                 bt_wake_msm_config();
 #endif
@@ -6341,11 +6341,11 @@ static void __init msm7x2x_init(void)
 #endif
 #if defined(CONFIG_BT) && defined(CONFIG_MARIMBA_CORE)
 /* init bt power according to the chip used. */
-#ifdef HUAWEI_BT_BCM4330
+#ifdef CONFIG_HUAWEI_BT_BCM43XX
         bt_bcm4330_power_init();
 #endif
 
-#ifdef HUAWEI_BT_WCN2243
+#ifdef CONFIG_HUAWEI_BT_WCN2243
         bt_power_init();
 #endif
 /* default  */ 	

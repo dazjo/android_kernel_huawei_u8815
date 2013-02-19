@@ -1089,7 +1089,7 @@ out:
 }
 
 /* Enable the transmitter Interrupt */
-#if defined(CONFIG_HUAWEI_KERNEL) && defined(HUAWEI_BT_BCM_VER_3)
+#if defined(CONFIG_HUAWEI_KERNEL)
 /* lgh add calling callback for bluesleep here */
 extern void bluesleep_outgoing_data(void);
 #endif
@@ -1098,7 +1098,7 @@ static void msm_hs_start_tx_locked(struct uart_port *uport )
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
 
 	clk_enable(msm_uport->clk);
-#if defined(CONFIG_HUAWEI_KERNEL) && defined(HUAWEI_BT_BCM_VER_3)
+#if defined(CONFIG_HUAWEI_KERNEL)
 	/* lgh add for lpm here */
     printk(KERN_ERR "%s BCM bt 3.0 call bluesleep_outgoing_data\n", __FUNCTION__);
 	bluesleep_outgoing_data();
@@ -1556,7 +1556,7 @@ void msm_hs_request_clock_on(struct uart_port *uport) {
 }
 EXPORT_SYMBOL(msm_hs_request_clock_on);
 
-#if (defined(HUAWEI_BT_WCN2243) || (!defined(CONFIG_HUAWEI_KERNEL)))
+#if (defined(CONFIG_HUAWEI_BT_WCN2243) || (!defined(CONFIG_HUAWEI_KERNEL)))
 static irqreturn_t msm_hs_wakeup_isr(int irq, void *dev)
 {
 	unsigned int wakeup = 0;
@@ -1600,7 +1600,7 @@ static const char *msm_hs_type(struct uart_port *port)
 }
 
 /* Called when port is opened */
-#if defined(CONFIG_HUAWEI_KERNEL) && defined(HUAWEI_BT_BCM_VER_3)
+#if defined(CONFIG_HUAWEI_KERNEL)
 /* lgh added for bluesleep */
 extern void bluesleep_uart_open(struct uart_port *uport);
 
@@ -1615,7 +1615,7 @@ static int msm_hs_startup(struct uart_port *uport)
 	struct circ_buf *tx_buf = &uport->state->xmit;
 	struct msm_hs_tx *tx = &msm_uport->tx;
 
-#if defined(CONFIG_HUAWEI_KERNEL) && defined(HUAWEI_BT_BCM_VER_3)
+#if defined(CONFIG_HUAWEI_KERNEL)
 	/*lgh added we should re-consider that whether here would bt called*/
     printk(KERN_ERR "%s BCM bt 3.0 call bluesleep_uart_open\n", __FUNCTION__);
 	bluesleep_uart_open(uport);
@@ -1708,7 +1708,7 @@ static int msm_hs_startup(struct uart_port *uport)
 		return ret;
 	if (use_low_power_wakeup(msm_uport)) {
 /* Disable QC In-Band sleep mode if BCM4330 is used. */
-#if (defined(HUAWEI_BT_WCN2243) || (!defined(CONFIG_HUAWEI_KERNEL)))
+#if (defined(CONFIG_HUAWEI_BT_WCN2243) || (!defined(CONFIG_HUAWEI_KERNEL)))
 		ret = request_irq(msm_uport->wakeup.irq, msm_hs_wakeup_isr,
 				  IRQF_TRIGGER_FALLING,
 				  "msm_hs_wakeup", msm_uport);
@@ -2009,7 +2009,7 @@ static int __init msm_serial_hs_init(void)
  *     - Disables the port
  *     - Unhook the ISR
  */
-#if defined(CONFIG_HUAWEI_KERNEL) && defined(HUAWEI_BT_BCM_VER_3)
+#if defined(CONFIG_HUAWEI_KERNEL)
 /* lgh add for bluesleep */
 extern void bluesleep_uart_close(struct uart_port *uport);
 
@@ -2018,7 +2018,7 @@ static void msm_hs_shutdown(struct uart_port *uport)
 {
 	unsigned long flags;
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
-#if defined(CONFIG_HUAWEI_KERNEL) && defined(HUAWEI_BT_BCM_VER_3)
+#if defined(CONFIG_HUAWEI_KERNEL)
 	/*lgh added for bluesleep */
     printk(KERN_ERR "%s BCM bt 3.0 call bluesleep_uart_close\n", __FUNCTION__);
 	bluesleep_uart_close(uport);
@@ -2078,7 +2078,7 @@ static void __exit msm_serial_hs_exit(void)
 	uart_unregister_driver(&msm_hs_driver);
 }
 
-#if (defined(HUAWEI_BT_WCN2243) || (!defined(CONFIG_HUAWEI_KERNEL)))
+#if (defined(CONFIG_HUAWEI_BT_WCN2243) || (!defined(CONFIG_HUAWEI_KERNEL)))
 static int msm_hs_runtime_idle(struct device *dev)
 {
 	/*
@@ -2118,7 +2118,7 @@ static struct platform_driver msm_serial_hs_platform_driver = {
 	.driver = {
 		.name = "msm_serial_hs",
 /*deactive pm if use bcm chip*/
-#if (defined(HUAWEI_BT_WCN2243) || (!defined(CONFIG_HUAWEI_KERNEL)))
+#if (defined(CONFIG_HUAWEI_BT_WCN2243) || (!defined(CONFIG_HUAWEI_KERNEL)))
 		.pm   = &msm_hs_dev_pm_ops,
 #endif		
 	},

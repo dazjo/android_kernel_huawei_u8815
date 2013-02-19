@@ -548,18 +548,6 @@ else
 KBUILD_CFLAGS	+= -O2
 endif
 
-# Add Huawei Marco for different BT chip
-ifeq ($(ENABLE_BCM_4330),true)
-KBUILD_CFLAGS += -DHUAWEI_BT_BCM4330
-endif
-ifeq ($(ENABLE_WCN_2243),true)
-KBUILD_CFLAGS += -DHUAWEI_BT_WCN2243
-endif
-
-ifeq ($(BT_BCM_VER_3), true)
-KBUILD_CFLAGS += -DHUAWEI_BT_BCM_VER_3
-endif
-
 include $(srctree)/arch/$(SRCARCH)/Makefile
 
 ifneq ($(CONFIG_FRAME_WARN),0)
