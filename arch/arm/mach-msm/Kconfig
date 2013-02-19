@@ -2341,3 +2341,4 @@ config FRAMEBUF_SELF_ADAPT_HACK
 	help
 	  Select Y to add an extra 1024*1024 to the framebuffer memory region determined by
 	  Huawei's bootloader. This is useful for booting on the Gingerbread bootloader.
+	  ***DIE HUAWEI DIE***
