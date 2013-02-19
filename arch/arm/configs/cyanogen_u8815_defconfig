@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux/arm 2.6.38.6 Kernel Configuration
-# Fri Dec 28 23:04:10 2012
+# Tue Feb 19 11:47:51 2013
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -421,6 +421,8 @@ CONFIG_PM8XXX_RPC_VIBRATOR=y
 # CONFIG_MSM_SPM_V1 is not set
 # CONFIG_MSM_SPM_V2 is not set
 # CONFIG_HUAWEI_RPC_CRASH_DEBUG is not set
+CONFIG_HUAWEI_BT_BCM43XX=y
+# CONFIG_HUAWEI_BT_WCN2243 is not set
 
 #
 # System MMU
