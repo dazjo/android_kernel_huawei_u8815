@@ -236,6 +236,25 @@ char *get_bt_device_name(void)
 	
 	return bt_device_array[i].dev_name;
 } 
+
+char *get_baseband_version(void)
+{
+  char *baseband_version = NULL;
+#ifdef CONFIG_FRAMEBUF_SELF_ADAPT_HACK
+  if(frame_buffer_boosted)
+  {
+    baseband_version = "109808";
+  }
+  else
+  {
+#endif
+    baseband_version = "2030";
+#ifdef CONFIG_FRAMEBUF_SELF_ADAPT_HACK
+  }
+#endif
+  return baseband_version;
+}
+
 void get_audio_property(char *audio_property)
 {
   unsigned int property = AUDIO_PROPERTY_INVALID;

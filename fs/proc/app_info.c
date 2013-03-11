@@ -314,25 +314,27 @@ static int app_version_read_proc(char *page, char **start, off_t off,
 	char *lcd_name = NULL;
 	char * touch_info = NULL;
 	char *wifi_device_name = NULL;
-    char *bt_device_name = NULL;
+	char *bt_device_name = NULL;
+	char *baseband_version = NULL;
 	char audio_property[AUDIO_PROPERTY_LEN] = {0};
 	char s_board_id[BOARD_ID_LEN + BOARD_ID_SUB_VER_LEN] = {0};
-    char sub_ver[BOARD_ID_SUB_VER_LEN] = {0};
+	char sub_ver[BOARD_ID_SUB_VER_LEN] = {0};
 	char hw_version_id[HW_VERSION + HW_VERSION_SUB_VER] = {0};
 	char hw_version_sub_ver[HW_VERSION_SUB_VER] = {0};	
 	char *compass_gs_name = NULL;
 	char *sensors_list_name = NULL;
-    set_s_board_hw_version(s_board_id,hw_version_id);
-    sprintf(sub_ver, ".Ver%c", 'A'+(char)get_hw_sub_board_id());
-   sprintf(hw_version_sub_ver, "VER.%c", 'A'+(char)get_hw_sub_board_id());
-    strcat(s_board_id, sub_ver);
-    strcat(hw_version_id, hw_version_sub_ver);
-    set_s_board_hw_version_special(hw_version_id,hw_version_sub_ver,s_board_id,sub_ver);
+	set_s_board_hw_version(s_board_id,hw_version_id);
+	sprintf(sub_ver, ".Ver%c", 'A'+(char)get_hw_sub_board_id());
+	sprintf(hw_version_sub_ver, "VER.%c", 'A'+(char)get_hw_sub_board_id());
+	strcat(s_board_id, sub_ver);
+	strcat(hw_version_id, hw_version_sub_ver);
+	set_s_board_hw_version_special(hw_version_id,hw_version_sub_ver,s_board_id,sub_ver);
 	compass_gs_name=get_compass_gs_position_name();
 	sensors_list_name = get_sensors_list_name();
 	lcd_name = get_lcd_panel_name();
 	wifi_device_name = get_wifi_device_name();
 	bt_device_name = get_bt_device_name();
+	baseband_version = get_baseband_version();
 	get_audio_property(audio_property);
 	touch_info = get_touch_info();
 	if (touch_info == NULL)
@@ -356,11 +358,12 @@ static int app_version_read_proc(char *page, char **start, off_t off,
 	"compass_gs_position:\n%s\n"
 	"sensors_list:\n%s\n"
 	"hw_version:\n%s\n"
-    "wifi_chip:\n%s\n"
-    "bt_chip:\n%s\n"
+	"baseband_version:\n%s\n"
+	"wifi_chip:\n%s\n"
+	"bt_chip:\n%s\n"
 	"audio_property:\n%s\n"
 	"touch_info:\n%s\n",
-	appsboot_version, ker_ver, str_flash_nand_id, s_board_id, lcd_name, camera_id, ts_id,charge_flag, compass_gs_name,sensors_list_name, hw_version_id,wifi_device_name,bt_device_name,audio_property, touch_info);
+	appsboot_version, ker_ver, str_flash_nand_id, s_board_id, lcd_name, camera_id, ts_id, charge_flag, compass_gs_name, sensors_list_name, hw_version_id, baseband_version, wifi_device_name, bt_device_name, audio_property, touch_info);
 #else
 	len = snprintf(page, PAGE_SIZE, "APPSBOOT:\n"
 	"%s\n"
@@ -375,9 +378,10 @@ static int app_version_read_proc(char *page, char **start, off_t off,
 	"compass_gs_position:\n%s\n"
 	"sensors_list:\n%s\n"
 	"hw_version:\n%s\n"
+	"baseband_version:\n%s\n"
 	"audio_property:\n%s\n"
 	"touch_info:\n%s\n",
-	appsboot_version, ker_ver, str_flash_nand_id, s_board_id, lcd_name, camera_id, ts_id, compass_gs_name,sensors_list_name, hw_version_id,audio_property, touch_info);
+	appsboot_version, ker_ver, str_flash_nand_id, s_board_id, lcd_name, camera_id, ts_id, compass_gs_name, sensors_list_name, hw_version_id, baseband_version, audio_property, touch_info);
 #endif
 	
 	return proc_calc_metrics(page, start, off, count, eof, len);
