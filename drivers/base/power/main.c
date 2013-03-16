@@ -56,6 +56,27 @@ struct dpm_drv_wd_data {
 	struct task_struct *tsk;
 };
 
+#ifdef CONFIG_HUAWEI_RPC_CRASH_DEBUG
+void print_dpm_list(void)
+{
+    int i=0;
+	struct device *dev;
+	
+    mutex_lock(&dpm_list_mtx);
+    printk("HW debug ");
+
+	list_for_each_entry(dev, &dpm_list, power.entry){
+		printk("%s,",dev_name(dev));
+		if(++i%20 == 0){
+            printk("\n");
+		}
+	}
+    mutex_unlock(&dpm_list_mtx);
+	return;
+}
+EXPORT_SYMBOL_GPL(print_dpm_list);
+#endif
+
 static int async_error;
 
 /**
@@ -306,12 +327,27 @@ static int pm_noirq_op(struct device *dev,
 #ifdef CONFIG_SUSPEND
 	case PM_EVENT_SUSPEND:
 		if (ops->suspend_noirq) {
+            #ifdef CONFIG_HUAWEI_RPC_CRASH_DEBUG
+			printk("HUAWEI RPC DEBUG: action: suspend_noirq dev name=%s, func=0x%x\n", dev_name(dev), (unsigned int)ops->suspend_noirq);
+			
+			if(dev &&(dev->driver)&& (dev->driver->pm)&&(dev->driver->pm->suspend_noirq))
+			{
+				print_symbol("driver->pm->suspend_noirq: %x\n", (unsigned int)(dev->driver->pm->suspend_noirq));
+			}
+            #endif
 			error = ops->suspend_noirq(dev);
 			suspend_report_result(ops->suspend_noirq, error);
 		}
 		break;
 	case PM_EVENT_RESUME:
 		if (ops->resume_noirq) {
+            #ifdef CONFIG_HUAWEI_RPC_CRASH_DEBUG
+			printk("HUAWEI RPC DEBUG: action: resume_noirq dev name=%s, func=0x%x\n", dev_name(dev), (unsigned int)ops->resume_noirq);
+			if(dev &&(dev->driver)&& (dev->driver->pm)&&(dev->driver->pm->resume_noirq))
+			{
+				print_symbol("driver->pm->resume_noirq %x\n", (unsigned int)(dev->driver->pm->resume_noirq));
+			}
+            #endif
 			error = ops->resume_noirq(dev);
 			suspend_report_result(ops->resume_noirq, error);
 		}
@@ -321,12 +357,18 @@ static int pm_noirq_op(struct device *dev,
 	case PM_EVENT_FREEZE:
 	case PM_EVENT_QUIESCE:
 		if (ops->freeze_noirq) {
+            #ifdef CONFIG_HUAWEI_RPC_CRASH_DEBUG
+			printk("HUAWEI RPC DEBUG: action: freeze_noirqdev dev name=%s, func=0x%x\n", dev_name(dev), (unsigned int)ops->freeze_noirq);
+            #endif
 			error = ops->freeze_noirq(dev);
 			suspend_report_result(ops->freeze_noirq, error);
 		}
 		break;
 	case PM_EVENT_HIBERNATE:
 		if (ops->poweroff_noirq) {
+            #ifdef CONFIG_HUAWEI_RPC_CRASH_DEBUG
+			printk("HUAWEI RPC DEBUG: action: poweroff_noirq dev name=%s, func=0x%x\n", dev_name(dev), (unsigned int)ops->poweroff_noirq);
+            #endif
 			error = ops->poweroff_noirq(dev);
 			suspend_report_result(ops->poweroff_noirq, error);
 		}
@@ -334,12 +376,18 @@ static int pm_noirq_op(struct device *dev,
 	case PM_EVENT_THAW:
 	case PM_EVENT_RECOVER:
 		if (ops->thaw_noirq) {
+            #ifdef CONFIG_HUAWEI_RPC_CRASH_DEBUG
+			printk("HUAWEI RPC DEBUG: action: thaw_noirq dev name=%s, func=0x%x\n", dev_name(dev), (unsigned int)ops->thaw_noirq);
+            #endif
 			error = ops->thaw_noirq(dev);
 			suspend_report_result(ops->thaw_noirq, error);
 		}
 		break;
 	case PM_EVENT_RESTORE:
 		if (ops->restore_noirq) {
+            #ifdef CONFIG_HUAWEI_RPC_CRASH_DEBUG
+			printk("HUAWEI RPC DEBUG: action: restore_noirq dev name=%s, func=0x%x\n", dev_name(dev), (unsigned int)ops->restore_noirq);
+            #endif
 			error = ops->restore_noirq(dev);
 			suspend_report_result(ops->restore_noirq, error);
 		}
@@ -470,7 +518,13 @@ void dpm_resume_noirq(pm_message_t state)
 		list_move_tail(&dev->power.entry, &dpm_suspended_list);
 		mutex_unlock(&dpm_list_mtx);
 
+        #ifdef CONFIG_HUAWEI_RPC_CRASH_DEBUG
+		printk(KERN_ERR "HUAWEI RPC DEBUG: resuming_noirq %s\n", dev_name(dev));
+        #endif
 		error = device_resume_noirq(dev, state);
+        #ifdef CONFIG_HUAWEI_RPC_CRASH_DEBUG
+		printk(KERN_ERR "HUAWEI RPC DEBUG: resumed_noirq %s error = %d\n", dev_name(dev), error);
+        #endif
 		if (error)
 			pm_dev_err(dev, state, " early", error);
 
@@ -648,7 +702,14 @@ void dpm_resume(pm_message_t state)
 
 			mutex_unlock(&dpm_list_mtx);
 
+            #ifdef CONFIG_HUAWEI_RPC_CRASH_DEBUG
+			printk(KERN_ERR "HUAWEI RPC DEBUG: resuming %s\n", dev_name(dev));
+            #endif
 			error = device_resume(dev, state, false);
+			
+            #ifdef CONFIG_HUAWEI_RPC_CRASH_DEBUG
+			printk(KERN_ERR "HUAWEI RPC DEBUG: resumed %s error=%d\n", dev_name(dev), error);
+            #endif
 			if (error)
 				pm_dev_err(dev, state, "", error);
 

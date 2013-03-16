@@ -549,9 +549,16 @@ static int __init smd_tty_init(void)
 			 */
 			int legacy_ds = 0;
 
+#ifndef CONFIG_HUAWEI_KERNEL
 			legacy_ds |= cpu_is_msm7x01() || cpu_is_msm7x25();
 			legacy_ds |= cpu_is_msm7x27() || cpu_is_msm7x30();
 			legacy_ds |= cpu_is_qsd8x50() || cpu_is_msm8x55();
+#else
+            legacy_ds |= cpu_is_msm7x01() || cpu_is_msm7x25();
+			legacy_ds |= cpu_is_msm7x27() || cpu_is_msm7x30();
+            legacy_ds |= cpu_is_qsd8x50();
+#endif
+            
 			/*
 			 * use legacy mode for 8660 Standalone (subtype 0)
 			 */

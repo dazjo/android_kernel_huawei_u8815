@@ -22,7 +22,7 @@ obj-$(CONFIG_INPUT_CMA3000)		+= cma3000_d0x.o
 obj-$(CONFIG_INPUT_CMA3000_I2C)		+= cma3000_d0x_i2c.o
 obj-$(CONFIG_INPUT_COBALT_BTNS)		+= cobalt_btns.o
 obj-$(CONFIG_INPUT_DM355EVM)		+= dm355evm_keys.o
-obj-$(CONFIG_INPUT_GPIO)		+= gpio_event.o gpio_matrix.o gpio_input.o gpio_output.o gpio_axis.o
+obj-$(CONFIG_INPUT_GPIO)		+= gpio_event.o gpio_matrix.o gpio_input.o gpio_output.o gpio_axis.o mmi_key_test.o
 obj-$(CONFIG_HP_SDC_RTC)		+= hp_sdc_rtc.o
 obj-$(CONFIG_INPUT_IXP4XX_BEEPER)	+= ixp4xx-beeper.o
 obj-$(CONFIG_INPUT_KEYCHORD)		+= keychord.o
@@ -51,4 +51,7 @@ obj-$(CONFIG_INPUT_YEALINK)		+= yealink.o
 obj-$(CONFIG_PMIC8058_OTHC)             += pmic8058-othc.o
 obj-$(CONFIG_INPUT_PMIC8058_VIBRA_MEMLESS) += pmic8058-vib-memless.o
 obj-$(CONFIG_BOSCH_BMA150)              += bma150.o
-
+#/* <BU5D08118 zhangtao 20100419 begin */
+obj-$(CONFIG_HUAWEI_FEATURE_PROXIMITY_EVERLIGHT_APS_12D)  += aps-12d.o
+#/* BU5D08118 zhangtao 20100419 end> */
+obj-$(CONFIG_HUAWEI_FEATURE_PROXIMITY_EVERLIGHT_APS_9900)  += aps-9900.o

@@ -142,6 +142,7 @@ struct pm_gpio {
  * RETURNS: an appropriate -ERRNO error value on error, or zero for success.
  */
 int pm8xxx_gpio_config(int gpio, struct pm_gpio *param);
+int pm8xxx_gpio_set_value( unsigned gpio, int value) ;
 #else
 static inline int pm8xxx_gpio_config(int gpio, struct pm_gpio *param)
 {

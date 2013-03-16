@@ -1695,7 +1695,6 @@ static int proc_pid_readlink(struct dentry * dentry, char __user * buffer, int b
 	/* Are we allowed to snoop on the tasks file descriptors? */
 	if (!proc_fd_access_allowed(inode))
 		goto out;
-
 	error = PROC_I(inode)->op.proc_get_link(inode, &path);
 	if (error)
 		goto out;

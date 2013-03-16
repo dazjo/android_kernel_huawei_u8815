@@ -993,6 +993,10 @@ static void handle_smd_irq(struct list_head *list, void (*notify)(void))
 		if (ch_flags) {
 			ch->update_state(ch);
 			ch->notify(ch->priv, SMD_EVENT_DATA);
+            #ifdef CONFIG_HUAWEI_RPC_CRASH_DEBUG
+			printk(KERN_ERR "%s: ch %s --> recv_stat %d, last_stat %d, ch_flags %d\n",__func__, 
+			                   ch->name, ch->recv->state, ch->last_state, ch_flags);
+            #endif
 		}
 		if (ch_flags & 0x4 && !state_change)
 			ch->notify(ch->priv, SMD_EVENT_STATUS);
@@ -1003,8 +1007,14 @@ static void handle_smd_irq(struct list_head *list, void (*notify)(void))
 
 static irqreturn_t smd_modem_irq_handler(int irq, void *data)
 {
+    #ifdef CONFIG_HUAWEI_RPC_CRASH_DEBUG
+	printk(KERN_ERR "++ %s: irq %d\n", __func__,irq); 
+    #endif
 	handle_smd_irq(&smd_ch_list_modem, notify_modem_smd);
 	handle_smd_irq_closing_list();
+    #ifdef CONFIG_HUAWEI_RPC_CRASH_DEBUG
+	printk(KERN_ERR "-- %s: irq %d\n", __func__,irq); 
+    #endif
 	return IRQ_HANDLED;
 }
 
@@ -1758,15 +1768,34 @@ EXPORT_SYMBOL(smd_write_avail);
 
 void smd_enable_read_intr(smd_channel_t *ch)
 {
+    #ifndef CONFIG_HUAWEI_RPC_CRASH_DEBUG
 	if (ch)
 		ch->send->fBLOCKREADINTR = 0;
+    #else
+	if (ch)
+	{
+		ch->send->fBLOCKREADINTR = 0; 
+		printk("%s:channel name:%s \n", __func__,ch->name); 
+	}
+    #endif
 }
 EXPORT_SYMBOL(smd_enable_read_intr);
 
 void smd_disable_read_intr(smd_channel_t *ch)
 {
+/* fix a bug related to the RPC logs
+ * we need this logs when we open the CONFIG option
+ */
+    #ifndef CONFIG_HUAWEI_RPC_CRASH_DEBUG
 	if (ch)
 		ch->send->fBLOCKREADINTR = 1;
+    #else
+	if (ch)
+	{
+		ch->send->fBLOCKREADINTR = 1; 
+		printk("%s:channel name:%s \n", __func__,ch->name); 
+	}	
+    #endif
 }
 EXPORT_SYMBOL(smd_disable_read_intr);
 

@@ -979,9 +979,16 @@ static int rr_read(struct rpcrouter_xprt_info *xprt_info,
 		wake_unlock(&xprt_info->wakelock);
 		spin_unlock_irqrestore(&xprt_info->lock, flags);
 
+        #ifdef CONFIG_HUAWEI_RPC_CRASH_DEBUG
+		printk(KERN_ERR "%s: Wait for %d bytes\n",__func__, xprt_info->need_len);
+        #endif
+
 		wait_event(xprt_info->read_wait,
 			xprt_info->xprt->read_avail() >= len
 			|| xprt_info->abort_data_read);
+        #ifdef CONFIG_HUAWEI_RPC_CRASH_DEBUG
+		printk(KERN_ERR "%s: Wait ended for %d bytes\n",__func__, xprt_info->need_len);
+        #endif
 	}
 	return -EIO;
 }
@@ -1090,6 +1097,9 @@ static void do_read_data(struct work_struct *work)
 			rq = (struct rpc_request_hdr *) frag->data;
 			xid = ntohl(rq->xid);
 		}
+		#ifdef CONFIG_HUAWEI_RPC_CRASH_DEBUG
+        printk("RPC receive deubg #1: xid=0x%03x\n",xid);
+		#endif
 		if ((pm >> 31 & 0x1) || (pm >> 30 & 0x1))
 			RAW_PMR_NOMASK("xid:0x%03x first=%i,last=%i,mid=%3i,"
 				       "len=%3i,dst_cid=%08x\n",
@@ -1102,6 +1112,10 @@ static void do_read_data(struct work_struct *work)
 
 	if (smd_rpcrouter_debug_mask & SMEM_LOG) {
 		rq = (struct rpc_request_hdr *) frag->data;
+		#ifdef CONFIG_HUAWEI_RPC_CRASH_DEBUG
+        printk("RPC receive deubg #2: xid=0x%03x, ntohl(xid)=0x%03x\n",rq->xid, ntohl(rq->xid));
+		printk("RPC debug #3 prog=0x%x, ver=0x%x,proc=0x%x\n", ntohl(rq->prog), ntohl(rq->vers), ntohl(rq->procedure));
+		#endif
 		if (rq->xid == 0)
 			smem_log_event(SMEM_LOG_PROC_ID_APPS |
 				       RPC_ROUTER_LOG_EVENT_MID_READ,
@@ -1146,8 +1160,6 @@ static void do_read_data(struct work_struct *work)
 			goto done;
 		}
 	}
-	spin_unlock(&ept->incomplete_lock);
-	spin_unlock_irqrestore(&local_endpoints_lock, flags);
 	/* This mid is new -- create a packet for it, and put it on
 	 * the incomplete list if this fragment is not a last fragment,
 	 * otherwise put it on the read queue.
@@ -1158,23 +1170,13 @@ static void do_read_data(struct work_struct *work)
 	memcpy(&pkt->hdr, &hdr, sizeof(hdr));
 	pkt->mid = mid;
 	pkt->length = frag->length;
-
-	spin_lock_irqsave(&local_endpoints_lock, flags);
-	ept = rpcrouter_lookup_local_endpoint(hdr.dst_cid);
-	if (!ept) {
-		spin_unlock_irqrestore(&local_endpoints_lock, flags);
-		DIAG("no local ept for cid %08x\n", hdr.dst_cid);
-		kfree(frag);
-		kfree(pkt);
-		goto done;
-	}
 	if (!PACMARK_LAST(pm)) {
-		spin_lock(&ept->incomplete_lock);
 		list_add_tail(&pkt->list, &ept->incomplete);
 		spin_unlock(&ept->incomplete_lock);
 		spin_unlock_irqrestore(&local_endpoints_lock, flags);
 		goto done;
 	}
+	spin_unlock(&ept->incomplete_lock);
 
 packet_complete:
 	spin_lock(&ept->read_q_lock);
@@ -1184,6 +1186,7 @@ packet_complete:
 	wake_up(&ept->wait_q);
 	spin_unlock(&ept->read_q_lock);
 	spin_unlock_irqrestore(&local_endpoints_lock, flags);
+
 done:
 
 	if (hdr.confirm_rx) {
@@ -2457,6 +2460,10 @@ void msm_rpcrouter_xprt_notify(struct rpcrouter_xprt *xprt, unsigned event)
 		if (xprt->read_avail() >= xprt_info->need_len)
 			wake_lock(&xprt_info->wakelock);
 		wake_up(&xprt_info->read_wait);
+		#ifdef CONFIG_HUAWEI_RPC_CRASH_DEBUG
+		printk(KERN_ERR "%s: Wakeup event - read_avail: %d, need_len %d\n",
+		                  __func__, xprt->read_avail(), xprt_info->need_len);
+		#endif
 	}
 }
 
@@ -2503,7 +2510,11 @@ static int __init rpcrouter_init(void)
 	int ret;
 
 	msm_rpc_connect_timeout_ms = 0;
+#ifndef CONFIG_HUAWEI_RPC_CRASH_DEBUG
 	smd_rpcrouter_debug_mask |= SMEM_LOG;
+#else
+	smd_rpcrouter_debug_mask = 511;
+#endif
 	debugfs_init();
 
 

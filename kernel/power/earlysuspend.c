@@ -27,8 +27,16 @@ enum {
 	DEBUG_SUSPEND = 1U << 2,
 	DEBUG_VERBOSE = 1U << 3,
 };
+#ifdef CONFIG_HUAWEI_KERNEL
+static int debug_mask = DEBUG_USER_STATE | DEBUG_SUSPEND;
+#else
 static int debug_mask = DEBUG_USER_STATE;
+#endif
 module_param_named(debug_mask, debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP);
+#ifdef CONFIG_HUAWEI_KERNEL
+void set_sampling_rate(int screen_on);
+void set_up_threshold(int screen_on);
+#endif
 
 static DEFINE_MUTEX(early_suspend_lock);
 static LIST_HEAD(early_suspend_handlers);
@@ -100,6 +108,12 @@ static void early_suspend(struct work_struct *work)
 			pos->suspend(pos);
 		}
 	}
+
+#ifdef CONFIG_HUAWEI_KERNEL
+	set_sampling_rate(0);
+	set_up_threshold(0);
+#endif
+
 	mutex_unlock(&early_suspend_lock);
 
 	suspend_sys_sync_queue();
@@ -117,6 +131,11 @@ static void late_resume(struct work_struct *work)
 	int abort = 0;
 
 	mutex_lock(&early_suspend_lock);
+#ifdef CONFIG_HUAWEI_KERNEL
+	set_sampling_rate(1);
+	set_up_threshold(1);
+#endif
+    
 	spin_lock_irqsave(&state_lock, irqflags);
 	if (state == SUSPENDED)
 		state &= ~SUSPENDED;

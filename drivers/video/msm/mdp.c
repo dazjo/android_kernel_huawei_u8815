@@ -142,6 +142,13 @@ static struct early_suspend early_suspend;
 #endif
 
 static u32 mdp_irq;
+/* 
+ * Add a global flag to indicate supporting of the feature:
+ * continuous display from app bootloader to kernel/android 
+ */
+#ifdef CONFIG_HUAWEI_KERNEL
+boolean mdp_continues_display = true;
+#endif
 
 static uint32 mdp_prim_panel_type = NO_PANEL;
 #ifndef CONFIG_FB_MSM_MDP22

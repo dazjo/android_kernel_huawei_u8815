@@ -49,6 +49,8 @@
 #include <net/bluetooth/bluetooth.h>
 #include <net/bluetooth/hci_core.h>
 
+//#define BT_DBG(fmt, arg...)  printk(KERN_ERR "%s: " fmt "\n" , __func__ , ## arg)
+unsigned char fm_command_pending = 0;
 static int enable_mgmt = 1;
 
 /* ----- HCI socket interface ----- */
@@ -523,7 +525,6 @@ static int hci_sock_sendmsg(struct kiocb *iocb, struct socket *sock,
 	struct sock *sk = sock->sk;
 	struct hci_dev *hdev;
 	struct sk_buff *skb;
-	int reserve = 0;
 	int err;
 
 	BT_DBG("sock %p sk %p", sock, sk);
@@ -561,17 +562,9 @@ static int hci_sock_sendmsg(struct kiocb *iocb, struct socket *sock,
 		goto done;
 	}
 
-	/* Allocate extra headroom for Qualcomm PAL */
-	if (hdev->dev_type == HCI_AMP && hdev->manufacturer == 0x001d)
-		reserve = BT_SKB_RESERVE_80211;
-
-	skb = bt_skb_send_alloc(sk, len + reserve,
-					msg->msg_flags & MSG_DONTWAIT, &err);
+	skb = bt_skb_send_alloc(sk, len, msg->msg_flags & MSG_DONTWAIT, &err);
 	if (!skb)
 		goto done;
-
-	if (reserve)
-		skb_reserve(skb, reserve);
 
 	if (memcpy_fromiovec(skb_put(skb, len), msg->msg_iov, len)) {
 		err = -EFAULT;
@@ -587,6 +580,16 @@ static int hci_sock_sendmsg(struct kiocb *iocb, struct socket *sock,
 		u16 ogf = hci_opcode_ogf(opcode);
 		u16 ocf = hci_opcode_ocf(opcode);
 
+        /* 4329 FM VSC checking, 0xfc15 means fm cmd */
+        if (opcode == 0xfc15) {
+            while (fm_command_pending == 1) 
+           {
+                 BT_DBG("fm command is pending.");
+                 msleep(2);
+            }
+            fm_command_pending = 1;
+        }        
+            
 		if (((ogf > HCI_SFLT_MAX_OGF) ||
 				!hci_test_bit(ocf & HCI_FLT_OCF_BITS, &hci_sec_filter.ocf_mask[ogf])) &&
 					!capable(CAP_NET_RAW)) {

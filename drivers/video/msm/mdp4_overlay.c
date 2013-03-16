@@ -39,7 +39,7 @@
 #include "mdp4.h"
 
 #define VERSION_KEY_MASK	0xFFFFFF00
-
+#define OVERLAY_720P_SIZE       0x0E1000
 struct mdp4_overlay_ctrl {
 	struct mdp4_overlay_pipe plist[OVERLAY_PIPE_MAX];
 	struct mdp4_overlay_pipe *stage[MDP4_MIXER_MAX][MDP4_MIXER_STAGE_MAX];
@@ -2124,7 +2124,7 @@ int mdp4_overlay_set(struct fb_info *info, struct mdp_overlay *req)
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 	int ret, mixer, perf_level;
 	struct mdp4_overlay_pipe *pipe;
-
+	uint32 resolution = req->src.width * req->src.height;
 	if (mfd == NULL) {
 		pr_err("%s: mfd == NULL, -ENODEV\n", __func__);
 		return -ENODEV;
@@ -2188,13 +2188,23 @@ int mdp4_overlay_set(struct fb_info *info, struct mdp_overlay *req)
 		mdp4_hsic_set(pipe, &(req->dpp));
 
 	mdp4_stat.overlay_set[pipe->mixer_num]++;
-
 	if (ctrl->panel_mode & MDP4_PANEL_MDDI) {
 		if (mdp_hw_revision == MDP4_REVISION_V2_1 &&
 			pipe->mixer_num == MDP4_MIXER0)
-			mdp4_overlay_status_write(MDP4_OVERLAY_TYPE_SET, true);
-	}
+		{
+		#ifdef CONFIG_HUAWEI_KERNEL
+			if(resolution >= OVERLAY_720P_SIZE)
+			{
+				mdp4_overlay_status_write(MDP4_OVERLAY_TYPE_SET, true);
+				mdp4_overlay_status_write(MDP4_OVERLAY_TYPE_UNSET, false);
+			}
 
+		#else
+			mdp4_overlay_status_write(MDP4_OVERLAY_TYPE_SET, true);
+		#endif			
+		}
+	}
+	
 	if (ctrl->panel_mode & MDP4_PANEL_DTV &&
 	    pipe->mixer_num == MDP4_MIXER1)
 		mdp4_overlay_dtv_set(mfd, pipe);
@@ -2272,6 +2282,15 @@ int mdp4_overlay_unset(struct fb_info *info, int ndx)
 		}
 #else
 		if (ctrl->panel_mode & MDP4_PANEL_MDDI) {
+			if (mdp_hw_revision == MDP4_REVISION_V2_1)
+			{
+				mdp4_overlay_status_write(
+					MDP4_OVERLAY_TYPE_UNSET, true);
+				#ifdef CONFIG_HUAWEI_KERNEL
+					mdp4_overlay_status_write(
+						MDP4_OVERLAY_TYPE_SET, false);
+				#endif
+			}
 			if (mfd->panel_power_on)
 				mdp4_mddi_dma_busy_wait(mfd);
 		}
@@ -2298,8 +2317,14 @@ int mdp4_overlay_unset(struct fb_info *info, int ndx)
 #else
 		if (ctrl->panel_mode & MDP4_PANEL_MDDI) {
 			if (mdp_hw_revision == MDP4_REVISION_V2_1)
+			{
 				mdp4_overlay_status_write(
 					MDP4_OVERLAY_TYPE_UNSET, true);
+				#ifdef CONFIG_HUAWEI_KERNEL
+					mdp4_overlay_status_write(
+						MDP4_OVERLAY_TYPE_SET, false);
+				#endif
+			}
 			if (mfd->panel_power_on)
 				mdp4_mddi_overlay_restore();
 		}

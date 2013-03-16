@@ -13,6 +13,7 @@
 #ifndef __ARCH_ARM_MACH_MSM_BOARD_7627A__
 #define __ARCH_ARM_MACH_MSM_BOARD_7627A__
 
+#include "pm.h"
 void __init msm7627a_init_mmc(void);
 
 enum {
@@ -61,8 +62,7 @@ enum {
 	QRD_GPIO_TP,
 	QRD_GPIO_CAM_GP_CAMIF_RESET,
 };
-
-#if defined(CONFIG_BT) && defined(CONFIG_MARIMBA_CORE)
+#if (defined(HUAWEI_BT_BLUEZ_VER30) || (!defined(CONFIG_HUAWEI_KERNEL)))
 
 #define FPGA_MSM_CNTRL_REG2 0x90008010
 #define BAHAMA_SLAVE_ID_FM_REG 0x02
@@ -98,7 +98,25 @@ extern struct platform_device msm_bt_power_device;
 
 void __init msm7627a_bt_power_init(void);
 #endif
+#if (defined(HUAWEI_BT_BTLA_VER30) && defined(CONFIG_HUAWEI_KERNEL))
 
+struct bt_vreg_info {
+	const char *name;
+	unsigned int pmapp_id;
+	unsigned int min_level;
+	unsigned int max_level;
+	unsigned int is_pin_controlled;
+	struct regulator *reg;
+};
+
+void __init bt_bcm4330_power_init(void);
+
+void bt_wake_msm_config(void);
+
+extern struct platform_device msm_bt_power_device;
+extern struct platform_device msm_bluesleep_device;
+
+#endif
 void __init msm7627a_camera_init(void);
-
+u32 msm7627a_power_collapse_latency(enum msm_pm_sleep_mode);
 #endif

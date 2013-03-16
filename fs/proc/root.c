@@ -106,6 +106,9 @@ void __init proc_root_init(void)
 
 	init_pid_ns.proc_mnt = mnt;
 	proc_symlink("mounts", NULL, "self/mounts");
+    #ifdef CONFIG_HUAWEI_KERNEL
+	proc_app_info_init();
+    #endif
 
 	proc_net_init();
 

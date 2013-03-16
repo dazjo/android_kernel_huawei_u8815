@@ -17,6 +17,30 @@
 
 #include "internals.h"
 
+#ifdef CONFIG_HUAWEI_RPC_CRASH_DEBUG
+#include <linux/kernel.h>  
+#include <mach/msm_iomap.h>  
+#include <linux/io.h>
+
+#define TIMESTAMP_ADDR_TMP     (MSM_TMR_BASE + 0x08)
+
+static inline unsigned int read_timestamp(void)  
+{  
+	unsigned int tick = 0;  
+	tick = readl(TIMESTAMP_ADDR_TMP);  
+	return tick;  
+}  
+
+struct irqs_timestamp {  
+	unsigned int irq;  
+	uint32_t  ts; 
+	unsigned int state; 
+};  
+
+static struct irqs_timestamp irq_ts[128];  
+static int irq_idx = 0;  
+#endif
+
 /*
  * lockdep: we want to handle all irq_desc locks as a single lock-class:
  */
@@ -308,9 +332,23 @@ int generic_handle_irq(unsigned int irq)
 {
 	struct irq_desc *desc = irq_to_desc(irq);
 
-	if (!desc)
+#ifdef CONFIG_HUAWEI_RPC_CRASH_DEBUG
+	uint32_t  timetick=0; 
+	timetick = read_timestamp();  
+	irq_ts[irq_idx].irq=irq;
+	irq_ts[irq_idx].ts=timetick; 
+	irq_ts[irq_idx].state=1; 
+#endif
+
+    if (!desc)
 		return -EINVAL;
-	generic_handle_irq_desc(irq, desc);
+    generic_handle_irq_desc(irq, desc);
+
+#ifdef CONFIG_HUAWEI_RPC_CRASH_DEBUG
+    irq_ts[irq_idx].state=3;
+    irq_idx = (irq_idx + 1)%128; 
+#endif
+
 	return 0;
 }
 EXPORT_SYMBOL_GPL(generic_handle_irq);

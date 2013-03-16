@@ -32,15 +32,17 @@
 *  and virtual address domains for supporting these configurations using
 *  SPARSEMEM and a 3G/1G VM split.
 */
+#if( defined(CONFIG_HUAWEI_KERNEL) && defined(CONFIG_ARCH_MSM7X30) )
 
-#if defined(CONFIG_ARCH_MSM7X30)
+#ifndef __ASSEMBLY__
+extern unsigned int g_ebi0_size;
 
 #define EBI0_PHYS_OFFSET PHYS_OFFSET
 #define EBI0_PAGE_OFFSET PAGE_OFFSET
-#define EBI0_SIZE 0x10000000
+
 
 #define EBI1_PHYS_OFFSET 0x40000000
-#define EBI1_PAGE_OFFSET (EBI0_PAGE_OFFSET + EBI0_SIZE)
+#define EBI1_PAGE_OFFSET (EBI0_PAGE_OFFSET + g_ebi0_size) 
 
 #if (defined(CONFIG_SPARSEMEM) && defined(CONFIG_VMSPLIT_3G))
 
@@ -54,8 +56,33 @@
 	(virt) - EBI1_PAGE_OFFSET + EBI1_PHYS_OFFSET :	\
 	(virt) - EBI0_PAGE_OFFSET + EBI0_PHYS_OFFSET)
 
-#endif
+#endif /* (defined(CONFIG_SPARSEMEM) && defined(CONFIG_VMSPLIT_3G)) */
 
+#endif /* __ASSEMBLY__ */
+
+#endif 
+
+
+#if defined(CONFIG_HUAWEI_KERNEL)
+#if defined(CONFIG_ARCH_MSM7X27A)
+#define CS0_PHYS_OFFSET PHYS_OFFSET
+#define CS0_PAGE_OFFSET PAGE_OFFSET
+#define CS0_SIZE 0x10000000
+
+#define CS1_PHYS_OFFSET 0x20000000
+#define CS1_PAGE_OFFSET (CS0_PAGE_OFFSET + CS0_SIZE)
+
+#define __phys_to_virt(phys)				\
+    ((phys) >= CS1_PHYS_OFFSET ?			\
+    (phys) - CS1_PHYS_OFFSET + CS1_PAGE_OFFSET :	\
+    (phys) - CS0_PHYS_OFFSET + CS0_PAGE_OFFSET)
+
+#define __virt_to_phys(virt)				\
+    ((virt) >= CS1_PAGE_OFFSET ?			\
+    (virt) - CS1_PAGE_OFFSET + CS1_PHYS_OFFSET :	\
+    (virt) - CS0_PAGE_OFFSET + CS0_PHYS_OFFSET)
+
+#endif
 #endif
 
 #ifndef __ASSEMBLY__

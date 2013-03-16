@@ -284,7 +284,7 @@ static int kgsl_pwrctrl_gpubusy_show(struct device *dev,
 DEVICE_ATTR(gpuclk, 0644, kgsl_pwrctrl_gpuclk_show, kgsl_pwrctrl_gpuclk_store);
 DEVICE_ATTR(max_gpuclk, 0644, kgsl_pwrctrl_max_gpuclk_show,
 	kgsl_pwrctrl_max_gpuclk_store);
-DEVICE_ATTR(pwrnap, 0666, kgsl_pwrctrl_pwrnap_show, kgsl_pwrctrl_pwrnap_store);
+DEVICE_ATTR(pwrnap, 0664, kgsl_pwrctrl_pwrnap_show, kgsl_pwrctrl_pwrnap_store);
 DEVICE_ATTR(idle_timer, 0644, kgsl_pwrctrl_idle_timer_show,
 	kgsl_pwrctrl_idle_timer_store);
 DEVICE_ATTR(gpubusy, 0644, kgsl_pwrctrl_gpubusy_show,
@@ -509,6 +509,7 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 	pwr->nap_allowed = pdata->nap_allowed;
 	pwr->idle_needed = pdata->idle_needed;
 	pwr->interval_timeout = pdata->idle_timeout;
+	pwr->strtstp_sleepwake = pdata->strtstp_sleepwake;
 	pwr->ebi1_clk = clk_get(&pdev->dev, "bus_clk");
 	if (IS_ERR(pwr->ebi1_clk))
 		pwr->ebi1_clk = NULL;
@@ -631,7 +632,8 @@ void kgsl_timer(unsigned long data)
 
 	KGSL_PWR_INFO(device, "idle timer expired device %d\n", device->id);
 	if (device->requested_state != KGSL_STATE_SUSPEND) {
-		if (device->pwrctrl.restore_slumber)
+		if (device->pwrctrl.restore_slumber ||
+					device->pwrctrl.strtstp_sleepwake)
 			kgsl_pwrctrl_request_state(device, KGSL_STATE_SLUMBER);
 		else
 			kgsl_pwrctrl_request_state(device, KGSL_STATE_SLEEP);
@@ -699,7 +701,7 @@ _nap(struct kgsl_device *device)
 		}
 		kgsl_pwrctrl_irq(device, KGSL_PWRFLAGS_OFF);
 		kgsl_pwrctrl_clk(device, KGSL_PWRFLAGS_OFF);
-		kgsl_pwrctrl_set_state(device, KGSL_STATE_NAP);
+		kgsl_pwrctrl_set_state(device, device->requested_state);
 		if (device->idle_wakelock.name)
 			wake_unlock(&device->idle_wakelock);
 	case KGSL_STATE_NAP:
@@ -771,7 +773,9 @@ _slumber(struct kgsl_device *device)
 	case KGSL_STATE_NAP:
 	case KGSL_STATE_SLEEP:
 		del_timer_sync(&device->idle_timer);
-		kgsl_pwrctrl_pwrlevel_change(device, KGSL_PWRLEVEL_NOMINAL);
+		if (!device->pwrctrl.strtstp_sleepwake)
+			kgsl_pwrctrl_pwrlevel_change(device,
+					KGSL_PWRLEVEL_NOMINAL);
 		device->ftbl->suspend_context(device);
 		device->ftbl->stop(device);
 		device->pwrctrl.restore_slumber = true;

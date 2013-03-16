@@ -24,6 +24,14 @@
 
 atomic_t irq_cnt;
 
+#ifdef CONFIG_HUAWEI_KERNEL
+#define RECORDING_ON 1
+#define RECORDING_OFF 0
+#define PREVIOUS_FRAME_IS_PREVIEW 0
+#define PREVIOUS_FRAME_IS_RECORDING 1
+static uint32_t recording_flag = RECORDING_OFF;
+static uint32_t recording_frame_flag = PREVIOUS_FRAME_IS_RECORDING;
+#endif
 #define CHECKED_COPY_FROM_USER(in) {					\
 	if (copy_from_user((in), (void __user *)cmd->value,		\
 			cmd->length)) {					\
@@ -1148,6 +1156,10 @@ static void vfe31_start_common(void)
 
 static int vfe31_start_recording(void)
 {
+	#ifdef CONFIG_HUAWEI_KERNEL
+	recording_flag = RECORDING_ON;
+	recording_frame_flag = PREVIOUS_FRAME_IS_RECORDING;
+	#endif
 	msm_camio_set_perf_lvl(S_VIDEO);
 	usleep(1000);
 	vfe31_ctrl->recording_state = VFE_REC_STATE_START_REQUESTED;
@@ -1157,6 +1169,10 @@ static int vfe31_start_recording(void)
 
 static int vfe31_stop_recording(void)
 {
+	#ifdef CONFIG_HUAWEI_KERNEL
+	recording_flag = RECORDING_OFF;
+	recording_frame_flag = PREVIOUS_FRAME_IS_RECORDING;
+	#endif
 	vfe31_ctrl->recording_state = VFE_REC_STATE_STOP_REQUESTED;
 	msm_io_w_mb(1, vfe31_ctrl->vfebase + VFE_REG_UPDATE_CMD);
 	msm_camio_set_perf_lvl(S_PREVIEW);
@@ -3154,6 +3170,9 @@ static void vfe31_process_output_path_irq_2(uint32_t ping_pong)
 		free_buf->paddr + free_buf->cbcr_off);
 		kfree(free_buf);
 		vfe_send_outmsg(MSG_ID_OUTPUT_V, pyaddr, pcbcraddr);
+		#ifdef CONFIG_HUAWEI_KERNEL
+		recording_frame_flag = PREVIOUS_FRAME_IS_RECORDING;
+		#endif
 	} else {
 		vfe31_ctrl->outpath.out2.frame_drop_cnt++;
 		pr_warning("path_irq_2 - no free buffer!\n");

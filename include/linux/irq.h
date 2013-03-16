@@ -29,6 +29,8 @@
 #include <asm/ptrace.h>
 #include <asm/irq_regs.h>
 
+/* delete HUAWEI rpc crash debug for irq_ts and irq_idx */
+
 struct seq_file;
 struct irq_desc;
 struct irq_data;

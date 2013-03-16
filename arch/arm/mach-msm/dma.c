@@ -393,6 +393,64 @@ int msm_dmov_exec_cmd(unsigned id, unsigned int cmdptr)
 }
 EXPORT_SYMBOL(msm_dmov_exec_cmd);
 
+#ifdef CONFIG_HUAWEI_KERNEL
+#include <asm/delay.h>
+static int flag_dma_done = 0;
+/* dmov_exec_cmdptr_complete_func_apanic is inherit from dmov_exec_cmdptr_complete_func. 
+ * when in panic the irq is lock, so all wait about irq is will not return,
+ * we use the while poll to instead of the waitting operator.
+ */
+static void
+dmov_exec_cmdptr_complete_func_apanic(struct msm_dmov_cmd *_cmd,
+                   unsigned int result,
+                   struct msm_dmov_errdata *err)
+{
+    struct msm_dmov_exec_cmdptr_cmd *cmd = container_of(_cmd, struct msm_dmov_exec_cmdptr_cmd, dmov_cmd);
+    cmd->result = result;
+    if (result != 0x80000002 && err)
+        memcpy(&cmd->err, err, sizeof(struct msm_dmov_errdata));
+
+    /* we use the while poll to instead of the waitting operator */
+	flag_dma_done = 1;
+}
+/* msm_dmov_exec_cmd_apanic is inherit from msm_dmov_exec_cmd. 
+ * when in panic the irq is lock, so all wait about irq is will not return,
+ * we use the while poll to instead of the waitting operator.
+ */
+int msm_dmov_exec_cmd_apanic(unsigned id, unsigned int cmdptr)
+{
+    struct msm_dmov_exec_cmdptr_cmd cmd;
+
+    PRINT_FLOW("dmov_exec_cmdptr(%d, %x)\n", id, cmdptr);
+
+    cmd.dmov_cmd.cmdptr = cmdptr;
+    cmd.dmov_cmd.complete_func = dmov_exec_cmdptr_complete_func_apanic;
+    cmd.dmov_cmd.exec_func = NULL;
+    cmd.id = id;
+    cmd.result = 0;
+
+	msm_dmov_enqueue_cmd(id, &cmd.dmov_cmd);
+
+    /* we use the while poll to instead of the waitting operator */
+    flag_dma_done = 0;
+	while(1){
+		if( flag_dma_done == 1)
+			break;
+		udelay(100);
+	}
+
+    if (cmd.result != 0x80000002) {
+        PRINT_ERROR("dmov_exec_cmdptr(%d): ERROR, result: %x\n", id, cmd.result);
+        PRINT_ERROR("dmov_exec_cmdptr(%d):  flush: %x %x %x %x\n",
+            id, cmd.err.flush[0], cmd.err.flush[1], cmd.err.flush[2], cmd.err.flush[3]);
+        return -EIO;
+    }
+    PRINT_FLOW("dmov_exec_cmdptr(%d, %x) done\n", id, cmdptr);
+    return 0;
+}
+EXPORT_SYMBOL(msm_dmov_exec_cmd_apanic);
+#endif
+
 static void fill_errdata(struct msm_dmov_errdata *errdata, int ch, int adm)
 {
 	errdata->flush[0] = readl_relaxed(DMOV_REG(DMOV_FLUSH0(ch), adm));

@@ -76,9 +76,17 @@ enum ion_heap_ids {
 	ION_MM_FIRMWARE_HEAP_ID = 29,
 	ION_SYSTEM_HEAP_ID = 30,
 
-	ION_HEAP_ID_RESERVED = 31 /** Bit reserved for ION_SECURE flag */
+	ION_HEAP_ID_RESERVED = 31, /** Bit reserved for ION_SECURE flag */
+	ION_HEAP_SYSTEM_ID,
+	ION_HEAP_SYSTEM_CONTIG_ID,
+	ION_HEAP_EBI_ID,
+	ION_HEAP_SMI_ID,
+	ION_HEAP_ADSP_ID,
+	ION_HEAP_AUDIO_ID,
+	ION_HEAP_IOMMU_ID,
 };
 
+#define ION_KMALLOC_HEAP_NAME	"kmalloc"
 /**
  * Flag to use when allocating to indicate that a heap is secure.
  */

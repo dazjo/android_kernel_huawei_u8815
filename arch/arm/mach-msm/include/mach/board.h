@@ -67,6 +67,9 @@ struct msm_camera_device_platform_data {
 	uint8_t is_ispif;
 	uint8_t is_vpe;
 	struct msm_bus_scale_pdata *cam_bus_scale_table;
+#ifdef CONFIG_HUAWEI_CAMERA  
+	bool (*get_board_support_flash) (void);
+#endif
 };
 enum msm_camera_csi_data_format {
 	CSI_8BIT,
@@ -218,6 +221,14 @@ struct msm_actuator_info {
 	int vcm_enable;
 };
 
+#ifdef CONFIG_HUAWEI_CAMERA
+struct msm_camera_sensor_vreg {
+	const char *vreg_name;
+	unsigned int mv;
+    uint8_t always_on;
+};
+#endif 
+
 struct msm_camera_sensor_info {
 	const char *sensor_name;
 	int sensor_reset_enable;
@@ -238,6 +249,13 @@ struct msm_camera_sensor_info {
 	char *eeprom_data;
 	enum msm_camera_type camera_type;
 	struct msm_actuator_info *actuator_info;
+	#ifdef CONFIG_HUAWEI_CAMERA
+	int slave_sensor;
+	void (*vreg_enable_func) (int);
+	void (*vreg_disable_func) (int);
+	void (*set_s5k5ca_is_on)(int);
+	int  (*get_s5k5ca_is_on)(void);
+	#endif
 };
 
 struct msm_camera_board_info {
@@ -473,6 +491,13 @@ void msm_copper_very_early(void);
 struct mmc_platform_data;
 int msm_add_sdcc(unsigned int controller,
 		struct mmc_platform_data *plat);
+#ifdef CONFIG_HUAWEI_FEATURE_OEMINFO
+int __init rmt_oeminfo_add_device(void);
+#endif
+
+#ifdef CONFIG_HUAWEI_KERNEL
+int __init hw_extern_sdcard_add_device(void);
+#endif
 
 struct msm_usb_host_platform_data;
 int msm_add_host(unsigned int host,
@@ -492,6 +517,11 @@ void msm_snddev_hsed_voltage_on(void);
 void msm_snddev_hsed_voltage_off(void);
 void msm_snddev_tx_route_config(void);
 void msm_snddev_tx_route_deconfig(void);
+#ifdef CONFIG_HUAWEI_KERNEL
+void msm_snddev_poweramp_4music_on(void);
+void msm_snddev_hac_on(void);
+void msm_snddev_hac_off(void);
+#endif
 
 extern unsigned int msm_shared_ram_phys; /* defined in arch/arm/mach-msm/io.c */
 

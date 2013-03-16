@@ -33,10 +33,14 @@
 #define TVENC_C
 #include "tvenc.h"
 #include "msm_fb.h"
+#ifdef CONFIG_HUAWEI_KERNEL
+#include <mach/gpio.h>
+#endif
 #include "mdp4.h"
 /* AXI rate in KHz */
 #define MSM_SYSTEM_BUS_RATE	128000000
 
+extern boolean tv_cable_connected;
 static int tvenc_probe(struct platform_device *pdev);
 static int tvenc_remove(struct platform_device *pdev);
 
@@ -203,6 +207,17 @@ static int tvenc_off(struct platform_device *pdev)
 		pr_err("%s: pm_vid_en(off) failed! %d\n",
 		__func__, ret);
 	mdp4_extn_disp = 0;
+#ifdef CONFIG_HUAWEI_KERNEL
+	if(machine_is_msm7x30_u8800() || machine_is_msm8255_u8800_pro()) 
+	{
+		if (!tv_cable_connected)
+		{
+			gpio_tlmm_config(GPIO_CFG(33, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA),GPIO_CFG_ENABLE);
+			gpio_set_value(33, 0);    
+		}
+	}
+	
+#endif
 	return ret;
 }
 
@@ -238,6 +253,13 @@ static int tvenc_on(struct platform_device *pdev)
 		tvenc_pdata->pm_vid_en(0);
 		goto error;
 	}
+#ifdef CONFIG_HUAWEI_KERNEL
+	if(machine_is_msm7x30_u8800() || machine_is_msm7x30_u8800_51() || machine_is_msm8255_u8800_pro()) 
+	{
+		gpio_tlmm_config(GPIO_CFG(33, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA),GPIO_CFG_ENABLE);
+		gpio_set_value(33, 1);
+	}
+#endif
 
 	ret = panel_next_on(pdev);
 	if (ret) {

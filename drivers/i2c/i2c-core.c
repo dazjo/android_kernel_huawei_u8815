@@ -1319,6 +1319,13 @@ int i2c_transfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int num)
 	 *    one (discarding status on the second message) or errno
 	 *    (discarding status on the first one).
 	 */
+	 
+#ifdef CONFIG_HUAWEI_I2C_DEBUG_TOOL
+    if((adap->bus_debug_flag == 1) && (adap->debug_addr != msgs[0].addr))
+    {
+        return -EAGAIN;
+    }
+#endif
 
 	if (adap->algo->master_xfer) {
 #ifdef DEBUG

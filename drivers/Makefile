@@ -125,3 +125,5 @@ obj-y				+= ieee802154/
 obj-y				+= clk/
 
 obj-$(CONFIG_HWSPINLOCK)	+= hwspinlock/
+obj-$(CONFIG_HUAWEI_NFC_PN544) += nfc/
+obj-$(CONFIG_HUAWEI_HW_DEV_DCT) += devdetect/

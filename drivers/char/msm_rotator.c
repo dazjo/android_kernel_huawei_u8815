@@ -87,6 +87,13 @@
 #define INVALID_SESSION -1
 #define VERSION_KEY_MASK 0xFFFFFF00
 #define MAX_DOWNSCALE_RATIO 3
+#define ROTATOR_REVISION_V0 0 
+#define ROTATOR_REVISION_V1 1 
+#define ROTATOR_REVISION_V2 2 
+#define ROTATOR_REVISION_NONE 0xffffffff 
+
+uint32_t rotator_hw_revision; 
+ 
 
 struct tile_parm {
 	unsigned int width;  /* tile's width */
@@ -137,7 +144,9 @@ struct msm_rotator_dev {
 #define COMPONENT_5BITS 1
 #define COMPONENT_6BITS 2
 #define COMPONENT_8BITS 3
-
+#ifdef CONFIG_HUAWEI_KERNEL 
+static int Mirror_Flip;
+#endif
 static struct msm_rotator_dev *msm_rotator_dev;
 
 enum {
@@ -491,8 +500,9 @@ static int msm_rotator_ycxcx_h2v2(struct msm_rotator_img_info *info,
 		return -EINVAL;
 
 	/* rotator expects YCbCr for planar input format */
-	if (info->src.format == MDP_Y_CR_CB_H2V2 ||
-	    info->src.format == MDP_Y_CR_CB_GH2V2)
+	if ((info->src.format == MDP_Y_CR_CB_H2V2 || 
+	info->src.format == MDP_Y_CR_CB_GH2V2) && 
+	(rotator_hw_revision == ROTATOR_REVISION_V2)) 
 		swap(in_chroma_paddr, in_chroma2_paddr);
 
 	iowrite32(in_paddr, MSM_ROTATOR_SRCP0_ADDR);
@@ -1011,6 +1021,12 @@ static int msm_rotator_do_rotate(unsigned long arg)
 		  (msm_rotator_dev->img_info[s]->src.width & 0x1fff),
 		  MSM_ROTATOR_SRC_IMAGE_SIZE);
 
+#ifdef CONFIG_HUAWEI_KERNEL 
+       if(Mirror_Flip)
+       {
+       	msm_rotator_dev->img_info[s]->rotations = MDP_ROT_270;
+       }
+#endif
 	switch (format) {
 	case MDP_RGB_565:
 	case MDP_BGR_565:
@@ -1070,9 +1086,14 @@ static int msm_rotator_do_rotate(unsigned long arg)
 
 	msm_rotator_dev->processing = 1;
 	iowrite32(0x1, MSM_ROTATOR_START);
-
+#ifndef CONFIG_HUAWEI_KERNEL
 	wait_event(msm_rotator_dev->wq,
 		   (msm_rotator_dev->processing == 0));
+#else
+	wait_event_timeout(msm_rotator_dev->wq,
+		   (msm_rotator_dev->processing == 0),
+		   1 *HZ);
+#endif
 	status = (unsigned char)ioread32(MSM_ROTATOR_INTR_STATUS);
 	if ((status & 0x03) != 0x01)
 		rc = -EFAULT;
@@ -1339,6 +1360,9 @@ msm_rotator_close(struct inode *inode, struct file *filp)
 static long msm_rotator_ioctl(struct file *file, unsigned cmd,
 						 unsigned long arg)
 {
+#ifdef CONFIG_HUAWEI_KERNEL 
+	int info;
+#endif
 	int pid;
 
 	if (_IOC_TYPE(cmd) != MSM_ROTATOR_IOCTL_MAGIC)
@@ -1353,7 +1377,15 @@ static long msm_rotator_ioctl(struct file *file, unsigned cmd,
 		return msm_rotator_do_rotate(arg);
 	case MSM_ROTATOR_IOCTL_FINISH:
 		return msm_rotator_finish(arg);
-
+#ifdef CONFIG_HUAWEI_KERNEL
+       case MSM_ROTATOR_IOCTL_MIRROR_FLIP:
+	   	if (copy_from_user(&info, (void __user *)arg, sizeof(int)))
+	   	{
+		return -EFAULT;
+	   	}
+	   	Mirror_Flip = info;
+		return 0;
+#endif
 	default:
 		dev_dbg(msm_rotator_dev->device,
 			"unexpected IOCTL %d\n", cmd);
@@ -1503,6 +1535,12 @@ static int __devinit msm_rotator_probe(struct platform_device *pdev)
 #endif
 	if (ver != pdata->hardware_version_number)
 		pr_info("%s: invalid HW version\n", DRIVER_NAME);
+	rotator_hw_revision = ver; 
+	rotator_hw_revision >>= 16; /* bit 31:16 */ 
+	rotator_hw_revision &= 0xff; 
+
+	pr_info("%s: rotator_hw_revision=%x\n", 
+	__func__, rotator_hw_revision); 
 
 	msm_rotator_dev->irq = platform_get_irq(pdev, 0);
 	if (msm_rotator_dev->irq < 0) {

@@ -51,9 +51,16 @@ struct smd_port_info smd_pi[SMD_N_PORTS] = {
 	{
 		.name = "DS",
 	},
+	/* used DATA2 smd channel to support at command in pcui port */
+#ifndef CONFIG_HUAWEI_KERNEL
 	{
 		.name = "UNUSED",
 	},
+#else
+	{
+		.name = "DATA2",
+	},
+#endif
 };
 
 struct gsmd_port {

@@ -43,6 +43,9 @@
 
 #include <asm/system.h>
 #include <asm/uaccess.h>
+#ifdef CONFIG_HUAWEI_KERNEL
+#include <linux/mmc/mmc_panic.h>
+#endif
 
 #include "queue.h"
 
@@ -1452,6 +1455,11 @@ static int mmc_blk_probe(struct mmc_card *card)
 		if (mmc_add_disk(part_md))
 			goto out;
 	}
+
+#if 0
+    if (!strcmp(md->disk->disk_name, "mmcblk0"))
+        mmc_panic_save_card(card);
+#endif
 	return 0;
 
  out:

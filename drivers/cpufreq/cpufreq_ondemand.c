@@ -41,7 +41,9 @@
 #define MIN_FREQUENCY_UP_THRESHOLD		(11)
 #define MAX_FREQUENCY_UP_THRESHOLD		(100)
 #define MIN_FREQUENCY_DOWN_DIFFERENTIAL		(1)
-
+#ifdef CONFIG_HUAWEI_KERNEL
+#define MICRO_FREQUENCY_PREFERED_SAMPLE_RATE (30000)
+#endif
 /*
  * The polling frequency of this governor depends on the capability of
  * the processor. Default polling frequency is 1000 times the transition
@@ -507,6 +509,40 @@ static struct attribute_group dbs_attr_group = {
 	.name = "ondemand",
 };
 
+#ifdef CONFIG_HUAWEI_KERNEL
+void set_sampling_rate(int screen_on)
+{
+    char *buff_on = "30000";
+    char *buff_off= "50000";
+
+    if(1 == screen_on)
+    {
+        store_sampling_rate(NULL, NULL, buff_on, strlen(buff_on));
+    }
+    else
+    {
+        store_sampling_rate(NULL, NULL, buff_off, strlen(buff_off));
+    }
+}
+EXPORT_SYMBOL(set_sampling_rate);
+
+void set_up_threshold(int screen_on)
+{
+    char *buff_on = "80";
+    char *buff_off= "95";
+
+    if(1 == screen_on)
+    {
+        store_up_threshold(NULL, NULL, buff_on, strlen(buff_on));
+    }
+    else
+    {
+        store_up_threshold(NULL, NULL, buff_off, strlen(buff_off));
+    }
+}
+EXPORT_SYMBOL(set_up_threshold);
+#endif
+
 /************************** sysfs end ************************/
 
 static void dbs_freq_increase(struct cpufreq_policy *p, unsigned int freq)
@@ -780,11 +816,31 @@ static void dbs_input_event(struct input_handle *handle, unsigned int type,
 	}
 }
 
+#ifdef CONFIG_HUAWEI_KERNEL
+static int input_dev_filter(const char* input_dev_name)
+{
+    int ret = false;
+
+    if (strstr(input_dev_name, "sensors")
+        || strstr(input_dev_name, "_test_input")) {
+        ret = true;
+    } else {
+        ret = false;
+    }
+
+    return ret;
+}
+#endif
+
 static int dbs_input_connect(struct input_handler *handler,
 		struct input_dev *dev, const struct input_device_id *id)
 {
 	struct input_handle *handle;
 	int error;
+#ifdef CONFIG_HUAWEI_KERNEL
+    if (input_dev_filter(dev->name))
+        return 0;
+#endif
 
 	handle = kzalloc(sizeof(struct input_handle), GFP_KERNEL);
 	if (!handle)
@@ -884,9 +940,13 @@ static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 			/* Bring kernel and HW constraints together */
 			min_sampling_rate = max(min_sampling_rate,
 					MIN_LATENCY_MULTIPLIER * latency);
-			dbs_tuners_ins.sampling_rate =
+#ifdef CONFIG_HUAWEI_KERNEL
+			dbs_tuners_ins.sampling_rate = MICRO_FREQUENCY_PREFERED_SAMPLE_RATE;
+#else
+			dbs_tuners_ins.sampling_rate = 
 				max(min_sampling_rate,
 				    latency * LATENCY_MULTIPLIER);
+#endif
 			dbs_tuners_ins.io_is_busy = should_io_be_busy();
 		}
 		if (!cpu)
@@ -950,7 +1010,9 @@ static int __init cpufreq_gov_dbs_init(void)
 	put_cpu();
 	if (idle_time != -1ULL) {
 		/* Idle micro accounting is supported. Use finer thresholds */
+#ifndef CONFIG_HUAWEI_KERNEL
 		dbs_tuners_ins.up_threshold = MICRO_FREQUENCY_UP_THRESHOLD;
+#endif
 		dbs_tuners_ins.down_differential =
 					MICRO_FREQUENCY_DOWN_DIFFERENTIAL;
 		/*

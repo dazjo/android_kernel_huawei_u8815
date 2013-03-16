@@ -143,6 +143,9 @@ void gen_pool_destroy(struct gen_pool *pool)
 	struct gen_pool_chunk *chunk;
 	int bit;
 
+#ifdef CONFIG_HUAWEI_KERNEL
+    write_lock(&pool->lock);
+#endif
 	while (!list_empty(&pool->chunks)) {
 		chunk = list_entry(pool->chunks.next, struct gen_pool_chunk,
 				   next_chunk);
@@ -153,6 +156,9 @@ void gen_pool_destroy(struct gen_pool *pool)
 
 		kfree(chunk);
 	}
+#ifdef CONFIG_HUAWEI_KERNEL
+    write_unlock(&pool->lock);
+#endif
 	kfree(pool);
 }
 EXPORT_SYMBOL(gen_pool_destroy);

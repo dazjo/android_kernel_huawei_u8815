@@ -29,6 +29,20 @@
 
 #include <asm/ioctls.h>
 
+#ifdef CONFIG_HUAWEI_KERNEL
+/* for logcat nv control */
+#include <mach/oem_rapi_client.h>
+
+#define LOG_CTL_INFO_ITEM	   60008/*modem nv item: NV_LOG_CTL_INFO_I*/
+#define USER_LOG_ON 1
+#define USER_LOG_OFF 0
+
+struct log_ctl{
+	char on_off_flag; /*on off flag read from modem side*/
+	char reserve[3];
+};
+#endif
+
 /*
  * struct logger_log - represents a specific log, such as 'main' or 'radio'
  *
@@ -555,10 +569,18 @@ static struct logger_log VAR = { \
 	.size = SIZE, \
 };
 
+/* save 0.5M memory */
+#ifndef CONFIG_HUAWEI_KERNEL
 DEFINE_LOGGER_DEVICE(log_main, LOGGER_LOG_MAIN, 256*1024)
 DEFINE_LOGGER_DEVICE(log_events, LOGGER_LOG_EVENTS, 256*1024)
 DEFINE_LOGGER_DEVICE(log_radio, LOGGER_LOG_RADIO, 256*1024)
 DEFINE_LOGGER_DEVICE(log_system, LOGGER_LOG_SYSTEM, 256*1024)
+#else
+DEFINE_LOGGER_DEVICE(log_main, LOGGER_LOG_MAIN, 64*1024)
+DEFINE_LOGGER_DEVICE(log_events, LOGGER_LOG_EVENTS, 256*1024)
+DEFINE_LOGGER_DEVICE(log_radio, LOGGER_LOG_RADIO, 64*1024)
+DEFINE_LOGGER_DEVICE(log_system, LOGGER_LOG_SYSTEM, 64*1024)
+#endif
 
 static struct logger_log *get_log_from_minor(int minor)
 {
@@ -593,7 +615,21 @@ static int __init init_log(struct logger_log *log)
 static int __init logger_init(void)
 {
 	int ret;
+/* for logcat control by nv */
+#ifdef CONFIG_HUAWEI_KERNEL
+    u16 nv_item = LOG_CTL_INFO_ITEM;
+    struct log_ctl ctl_info;
+    int  rval = -1;
 
+    ctl_info.on_off_flag = -1;
+    rval = oem_rapi_read_nv(nv_item, (void*)&ctl_info, sizeof(ctl_info));
+    printk("logger open flag: on_off_flag=%d\n", ctl_info.on_off_flag);
+ 
+    /*if log nv(NV_LOG_CTL_INFO_I) is 0 or inactive , we don't init the logger driver*/
+    if((rval != 0) || (ctl_info.on_off_flag != USER_LOG_ON))
+        return 0;	
+#endif
+	
 	ret = init_log(&log_main);
 	if (unlikely(ret))
 		goto out;

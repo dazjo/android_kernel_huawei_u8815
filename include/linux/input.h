@@ -437,6 +437,7 @@ struct input_keymap_entry {
 
 #define KEY_WIMAX		246
 #define KEY_RFKILL		247	/* Key that controls all radios */
+#define KEY_GENIUSBUTTON        248  /* specially for a certain APK */
 
 /* Code 255 is reserved for special needs of AT keyboard driver */
 
@@ -829,6 +830,9 @@ struct input_keymap_entry {
 #define MSC_MAX			0x07
 #define MSC_CNT			(MSC_MAX+1)
 
+#define ABS_LIGHT            0x2e
+
+#define BTN_TOUCH2         0x102
 /*
  * LEDs
  */

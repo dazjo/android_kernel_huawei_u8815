@@ -21,6 +21,10 @@
 #define DRIVER_DESC "I2C radio driver for Qualcomm FM Radio Transceiver "
 #define DRIVER_VERSION "1.0.0"
 
+#ifdef CONFIG_HUAWEI_FEATURE_U8800_FM
+#define FM_MIN_DWELLTIME    1
+#endif
+
 #include <linux/version.h>
 #include <linux/init.h>         /* Initdata                     */
 #include <linux/delay.h>        /* udelay                       */
@@ -2584,6 +2588,10 @@ static int tavarua_vidioc_g_ctrl(struct file *file, void *priv,
 	int retval = 0;
 	unsigned char xfr_buf[XFR_REG_NUM];
 	signed char cRmssiThreshold;
+    /*add the variable for reading the threshold*/
+    #ifdef CONFIG_HUAWEI_FEATURE_U8800_FM
+    signed char   xfr_buf_th[XFR_REG_NUM] = {0};
+    #endif
 	signed char ioc;
 	unsigned char size = 0;
 
@@ -2640,6 +2648,18 @@ static int tavarua_vidioc_g_ctrl(struct file *file, void *priv,
 		ctrl->value = radio->region_params.region;
 		break;
 	case V4L2_CID_PRIVATE_TAVARUA_SIGNAL_TH:
+        /*add the variable for reading the threshold*/
+        #ifdef CONFIG_HUAWEI_FEATURE_U8800_FM
+        retval = sync_read_xfr(radio, RX_CONFIG, xfr_buf_th);
+		if (retval < 0) {
+			FMDBG("[G IOCTL=V4L2_CID_PRIVATE_TAVARUA_SIGNAL_TH]\n");
+			FMDBG("sync_read_xfr error: [retval=%d]\n", retval);
+			break;
+		}
+		cRmssiThreshold = (signed char)xfr_buf_th[0];
+		ctrl->value  = cRmssiThreshold;
+		FMDBG("cRmssiThreshold: %d\n", cRmssiThreshold);
+        #else    
 		retval = sync_read_xfr(radio, RX_CONFIG, xfr_buf);
 		if (retval < 0) {
 			FMDBG("[G IOCTL=V4L2_CID_PRIVATE_TAVARUA_SIGNAL_TH]\n");
@@ -2650,6 +2670,7 @@ static int tavarua_vidioc_g_ctrl(struct file *file, void *priv,
 		cRmssiThreshold = (signed char)xfr_buf[0];
 		ctrl->value  = cRmssiThreshold;
 		FMDBG("cRmssiThreshold: %d\n", cRmssiThreshold);
+        #endif
 		break;
 	case V4L2_CID_PRIVATE_TAVARUA_SRCH_PTY:
 		ctrl->value = radio->srch_params.srch_pty;
@@ -2881,6 +2902,14 @@ static int tavarua_vidioc_s_ctrl(struct file *file, void *priv,
 		radio->registers[SRCHCTRL] = value;
 		break;
 	case V4L2_CID_PRIVATE_TAVARUA_SCANDWELL:
+  /*add the check of Dwell time for FM hardware*/
+  #ifdef CONFIG_HUAWEI_FEATURE_U8800_FM
+		if(ctrl->value <= 0)
+		{
+		    ctrl->value = FM_MIN_DWELLTIME; //the mini value for current hardware
+		} 
+		printk(KERN_WARNING DRIVER_NAME ":  --set the DWELL time:  %d\n",  ctrl->value );
+  #endif
 		value = (radio->registers[SRCHCTRL] & ~SCAN_DWELL) |
 						(ctrl->value << 4);
 		radio->registers[SRCHCTRL] = value;

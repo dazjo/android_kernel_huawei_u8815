@@ -1,7 +1,6 @@
 /*
    BlueZ - Bluetooth protocol stack for Linux
    Copyright (C) 2010  Nokia Corporation
-   Copyright (c) 2011-2012 Code Aurora Forum.  All rights reserved.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License version 2 as
@@ -35,9 +34,18 @@
 #define MGMT_VERSION	0
 #define MGMT_REVISION	1
 
-#define SCAN_IDLE	0x00
-#define SCAN_LE		0x01
-#define SCAN_BR		0x02
+enum scan_mode {
+	SCAN_IDLE,
+	SCAN_LE,
+	SCAN_BR
+};
+
+struct disco_interleave {
+	u16			index;
+	enum scan_mode		mode;
+	int			int_phase;
+	int			int_count;
+};
 
 struct pending_cmd {
 	struct list_head list;
@@ -762,7 +770,7 @@ static void create_eir(struct hci_dev *hdev, u8 *data)
 	struct list_head *p;
 	size_t name_len;
 
-	name_len = strnlen(hdev->dev_name, HCI_MAX_EIR_LENGTH);
+	name_len = strlen(hdev->dev_name);
 
 	if (name_len > 0) {
 		/* EIR Data type */
@@ -890,17 +898,13 @@ static int add_uuid(struct sock *sk, u16 index, unsigned char *data, u16 len)
 
 	list_add(&uuid->list, &hdev->uuids);
 
-	if (test_bit(HCI_UP, &hdev->flags)) {
+	err = update_class(hdev);
+	if (err < 0)
+		goto failed;
 
-		err = update_class(hdev);
-		if (err < 0)
-			goto failed;
-
-		err = update_eir(hdev);
-		if (err < 0)
-			goto failed;
-	} else
-		err = 0;
+	err = update_eir(hdev);
+	if (err < 0)
+		goto failed;
 
 	err = cmd_complete(sk, index, MGMT_OP_ADD_UUID, NULL, 0);
 
@@ -954,16 +958,13 @@ static int remove_uuid(struct sock *sk, u16 index, unsigned char *data, u16 len)
 		goto unlock;
 	}
 
-	if (test_bit(HCI_UP, &hdev->flags)) {
-		err = update_class(hdev);
-		if (err < 0)
-			goto unlock;
+	err = update_class(hdev);
+	if (err < 0)
+		goto unlock;
 
-		err = update_eir(hdev);
-		if (err < 0)
-			goto unlock;
-	} else
-		err = 0;
+	err = update_eir(hdev);
+	if (err < 0)
+		goto unlock;
 
 	err = cmd_complete(sk, index, MGMT_OP_REMOVE_UUID, NULL, 0);
 
@@ -998,10 +999,7 @@ static int set_dev_class(struct sock *sk, u16 index, unsigned char *data,
 	hdev->major_class |= cp->major & MGMT_MAJOR_CLASS_MASK;
 	hdev->minor_class = cp->minor;
 
-	if (test_bit(HCI_UP, &hdev->flags))
-		err = update_class(hdev);
-	else
-		err = 0;
+	err = update_class(hdev);
 
 	if (err == 0)
 		err = cmd_complete(sk, index, MGMT_OP_SET_DEV_CLASS, NULL, 0);
@@ -1037,12 +1035,9 @@ static int set_service_cache(struct sock *sk, u16 index,  unsigned char *data,
 		err = 0;
 	} else {
 		clear_bit(HCI_SERVICE_CACHE, &hdev->flags);
-		if (test_bit(HCI_UP, &hdev->flags)) {
-			err = update_class(hdev);
-			if (err == 0)
-				err = update_eir(hdev);
-		} else
-			err = 0;
+		err = update_class(hdev);
+		if (err == 0)
+			err = update_eir(hdev);
 	}
 
 	if (err == 0)
@@ -1527,7 +1522,6 @@ static void pairing_complete_cb(struct hci_conn *conn, u8 status)
 	}
 
 	pairing_complete(cmd, status);
-	hci_conn_put(conn);
 }
 
 static void pairing_security_complete_cb(struct hci_conn *conn, u8 status)
@@ -1577,8 +1571,8 @@ static void discovery_terminated(struct pending_cmd *cmd, void *data)
 	if (!hdev)
 		goto not_found;
 
-	del_timer(&hdev->disco_le_timer);
-	del_timer(&hdev->disco_timer);
+	del_timer_sync(&hdev->disc_le_timer);
+	del_timer_sync(&hdev->disc_timer);
 	hci_dev_put(hdev);
 
 not_found:
@@ -1864,8 +1858,8 @@ static void discovery_rsp(struct pending_cmd *cmd, void *data)
 		if (cmd->opcode == MGMT_OP_STOP_DISCOVERY) {
 			struct hci_dev *hdev = hci_dev_get(cmd->index);
 			if (hdev) {
-				del_timer(&hdev->disco_le_timer);
-				del_timer(&hdev->disco_timer);
+				del_timer_sync(&hdev->disc_le_timer);
+				del_timer_sync(&hdev->disc_timer);
 				hci_dev_put(hdev);
 			}
 		}
@@ -1889,7 +1883,7 @@ void mgmt_inquiry_complete_evt(u16 index, u8 status)
 {
 	struct hci_dev *hdev;
 	struct hci_cp_le_set_scan_enable le_cp = {1, 0};
-	struct mgmt_mode cp = {0};
+	struct pending_cmd *cmd;
 	int err = -1;
 
 	BT_DBG("");
@@ -1897,6 +1891,7 @@ void mgmt_inquiry_complete_evt(u16 index, u8 status)
 	hdev = hci_dev_get(index);
 
 	if (!hdev || !lmp_le_capable(hdev)) {
+		struct mgmt_mode cp = {0};
 
 		mgmt_pending_foreach(MGMT_OP_STOP_DISCOVERY, index,
 						discovery_terminated, NULL);
@@ -1909,19 +1904,19 @@ void mgmt_inquiry_complete_evt(u16 index, u8 status)
 			return;
 	}
 
-	if (hdev->disco_state != SCAN_IDLE) {
+	cmd = mgmt_pending_find(MGMT_OP_STOP_DISCOVERY, index);
+	if (cmd && cmd->param) {
+		struct disco_interleave *ilp = cmd->param;
+
 		err = hci_send_cmd(hdev, HCI_OP_LE_SET_SCAN_ENABLE,
 						sizeof(le_cp), &le_cp);
-		if (err >= 0) {
-			mod_timer(&hdev->disco_le_timer, jiffies +
-				msecs_to_jiffies(hdev->disco_int_phase * 1000));
-			hdev->disco_state = SCAN_LE;
+		if (err >= 0 && hdev) {
+			mod_timer(&hdev->disc_le_timer, jiffies +
+				msecs_to_jiffies(ilp->int_phase * 1000));
+			ilp->mode = SCAN_LE;
 		} else
-			hdev->disco_state = SCAN_IDLE;
+			ilp->mode = SCAN_IDLE;
 	}
-
-	if (hdev->disco_state == SCAN_IDLE)
-		mgmt_event(MGMT_EV_DISCOVERING, index, &cp, sizeof(cp), NULL);
 
 	if (err < 0)
 		mgmt_pending_foreach(MGMT_OP_STOP_DISCOVERY, index,
@@ -1931,78 +1926,82 @@ done:
 	hci_dev_put(hdev);
 }
 
-void mgmt_disco_timeout(unsigned long data)
+static void disco_to(unsigned long data)
 {
-	struct hci_dev *hdev = (void *) data;
+	struct disco_interleave *ilp = (void *)data;
+	struct hci_dev *hdev;
 	struct pending_cmd *cmd;
-	struct mgmt_mode cp = {0};
 
-	BT_DBG("hci%d", hdev->id);
+	BT_DBG("hci%d", ilp->index);
 
-	hdev = hci_dev_get(hdev->id);
+	hdev = hci_dev_get(ilp->index);
 
-	if (!hdev)
-		return;
+	if (hdev) {
+		hci_dev_lock_bh(hdev);
+		del_timer_sync(&hdev->disc_le_timer);
 
-	hci_dev_lock_bh(hdev);
-	del_timer(&hdev->disco_le_timer);
+		cmd = mgmt_pending_find(MGMT_OP_STOP_DISCOVERY, ilp->index);
 
-	if (hdev->disco_state != SCAN_IDLE) {
-		struct hci_cp_le_set_scan_enable le_cp = {0, 0};
+		if (ilp->mode != SCAN_IDLE) {
+			struct hci_cp_le_set_scan_enable le_cp = {0, 0};
 
-		if (test_bit(HCI_UP, &hdev->flags)) {
-			if (hdev->disco_state == SCAN_LE)
+			if (ilp->mode == SCAN_LE)
 				hci_send_cmd(hdev, HCI_OP_LE_SET_SCAN_ENABLE,
 							sizeof(le_cp), &le_cp);
 			else
-				hci_send_cmd(hdev, HCI_OP_INQUIRY_CANCEL, 0,
-									 NULL);
+				hci_send_cmd(hdev, HCI_OP_INQUIRY_CANCEL,
+								0, NULL);
+
+			ilp->mode = SCAN_IDLE;
 		}
-		hdev->disco_state = SCAN_IDLE;
+
+		if (cmd) {
+			struct mgmt_mode cp = {0};
+
+			mgmt_event(MGMT_EV_DISCOVERING, ilp->index, &cp,
+							sizeof(cp), NULL);
+			mgmt_pending_remove(cmd);
+		}
+
+		hci_dev_unlock_bh(hdev);
+		hci_dev_put(hdev);
 	}
-
-	mgmt_event(MGMT_EV_DISCOVERING, hdev->id, &cp, sizeof(cp), NULL);
-
-	cmd = mgmt_pending_find(MGMT_OP_STOP_DISCOVERY, hdev->id);
-	if (cmd)
-		mgmt_pending_remove(cmd);
-
-	hci_dev_unlock_bh(hdev);
-	hci_dev_put(hdev);
 }
 
-void mgmt_disco_le_timeout(unsigned long data)
+static void disco_le_to(unsigned long data)
 {
-	struct hci_dev *hdev = (void *)data;
+	struct disco_interleave *ilp = (void *)data;
+	struct hci_dev *hdev;
+	struct pending_cmd *cmd;
 	struct hci_cp_le_set_scan_enable le_cp = {0, 0};
 
-	BT_DBG("hci%d", hdev->id);
+	BT_DBG("hci%d", ilp->index);
 
-	hdev = hci_dev_get(hdev->id);
+	hdev = hci_dev_get(ilp->index);
 
-	if (!hdev)
-		return;
+	if (hdev) {
+		hci_dev_lock_bh(hdev);
 
-	hci_dev_lock_bh(hdev);
+		cmd = mgmt_pending_find(MGMT_OP_STOP_DISCOVERY, ilp->index);
 
-	if (test_bit(HCI_UP, &hdev->flags)) {
-		if (hdev->disco_state == SCAN_LE)
+		if (ilp->mode == SCAN_LE)
 			hci_send_cmd(hdev, HCI_OP_LE_SET_SCAN_ENABLE,
-					sizeof(le_cp), &le_cp);
+							sizeof(le_cp), &le_cp);
 
-	/* re-start BR scan */
-		if (hdev->disco_state != SCAN_IDLE) {
+		/* re-start BR scan */
+		if (cmd) {
 			struct hci_cp_inquiry cp = {{0x33, 0x8b, 0x9e}, 4, 0};
-			hdev->disco_int_phase *= 2;
-			hdev->disco_int_count = 0;
-			cp.num_rsp = (u8) hdev->disco_int_phase;
+			ilp->int_phase *= 2;
+			ilp->int_count = 0;
+			cp.num_rsp = (u8) ilp->int_phase;
 			hci_send_cmd(hdev, HCI_OP_INQUIRY, sizeof(cp), &cp);
-			hdev->disco_state = SCAN_BR;
-		}
-	}
+			ilp->mode = SCAN_BR;
+		} else
+			ilp->mode = SCAN_IDLE;
 
-	hci_dev_unlock_bh(hdev);
-	hci_dev_put(hdev);
+		hci_dev_unlock_bh(hdev);
+		hci_dev_put(hdev);
+	}
 }
 
 static int start_discovery(struct sock *sk, u16 index)
@@ -2019,11 +2018,6 @@ static int start_discovery(struct sock *sk, u16 index)
 		return cmd_status(sk, index, MGMT_OP_START_DISCOVERY, ENODEV);
 
 	hci_dev_lock_bh(hdev);
-
-	if (hdev->disco_state && timer_pending(&hdev->disco_timer)) {
-		err = -EBUSY;
-		goto failed;
-	}
 
 	cmd = mgmt_pending_add(sk, MGMT_OP_START_DISCOVERY, index, NULL, 0);
 	if (!cmd) {
@@ -2058,25 +2052,29 @@ static int start_discovery(struct sock *sk, u16 index)
 	if (err < 0)
 		mgmt_pending_remove(cmd);
 	else if (lmp_le_capable(hdev)) {
+		struct disco_interleave il, *ilp;
+
+		il.int_phase = 1;
+		il.int_count = 0;
+		il.index = index;
+		il.mode = SCAN_BR;
+		mgmt_pending_add(sk, MGMT_OP_STOP_DISCOVERY, index, &il,
+					sizeof(struct disco_interleave));
 		cmd = mgmt_pending_find(MGMT_OP_STOP_DISCOVERY, index);
-		if (!cmd)
-			mgmt_pending_add(sk, MGMT_OP_STOP_DISCOVERY, index,
-								NULL, 0);
-		hdev->disco_int_phase = 1;
-		hdev->disco_int_count = 0;
-		hdev->disco_state = SCAN_BR;
-		del_timer(&hdev->disco_le_timer);
-		del_timer(&hdev->disco_timer);
-		mod_timer(&hdev->disco_timer,
-				jiffies + msecs_to_jiffies(20000));
+		if (cmd) {
+			ilp = cmd->param;
+			setup_timer(&hdev->disc_le_timer, disco_le_to,
+							(unsigned long) ilp);
+			setup_timer(&hdev->disc_timer, disco_to,
+							(unsigned long) ilp);
+			mod_timer(&hdev->disc_timer,
+					jiffies + msecs_to_jiffies(20000));
+		}
 	}
 
 failed:
 	hci_dev_unlock_bh(hdev);
 	hci_dev_put(hdev);
-
-	if (err < 0)
-		return cmd_status(sk, index, MGMT_OP_START_DISCOVERY, -err);
 
 	return err;
 }
@@ -2085,10 +2083,10 @@ static int stop_discovery(struct sock *sk, u16 index)
 {
 	struct hci_cp_le_set_scan_enable le_cp = {0, 0};
 	struct mgmt_mode mode_cp = {0};
+	struct disco_interleave *ilp = NULL;
 	struct hci_dev *hdev;
 	struct pending_cmd *cmd = NULL;
 	int err = -EPERM;
-	u8 state;
 
 	BT_DBG("");
 
@@ -2098,32 +2096,38 @@ static int stop_discovery(struct sock *sk, u16 index)
 
 	hci_dev_lock_bh(hdev);
 
-	state = hdev->disco_state;
-	hdev->disco_state = SCAN_IDLE;
-	del_timer(&hdev->disco_le_timer);
-	del_timer(&hdev->disco_timer);
-
-	if (state == SCAN_LE) {
-		err = hci_send_cmd(hdev, HCI_OP_LE_SET_SCAN_ENABLE,
-							sizeof(le_cp), &le_cp);
-		if (err >= 0) {
-			mgmt_pending_foreach(MGMT_OP_STOP_DISCOVERY, index,
-						discovery_terminated, NULL);
-
-			err = cmd_complete(sk, index, MGMT_OP_STOP_DISCOVERY,
-								NULL, 0);
+	if (lmp_le_capable(hdev)) {
+		cmd = mgmt_pending_find(MGMT_OP_STOP_DISCOVERY, index);
+		if (!cmd) {
+			err = -ENOMEM;
+			goto failed;
 		}
+
+		ilp = cmd->param;
 	}
 
-	if (err < 0)
-		err = hci_send_cmd(hdev, HCI_OP_INQUIRY_CANCEL, 0, NULL);
+	if (lmp_le_capable(hdev) && ilp && (ilp->mode == SCAN_LE))
+		err = hci_send_cmd(hdev, HCI_OP_LE_SET_SCAN_ENABLE,
+							sizeof(le_cp), &le_cp);
 
-	cmd = mgmt_pending_find(MGMT_OP_STOP_DISCOVERY, index);
+	if (err < 0) {
+		if (!ilp || (ilp->mode == SCAN_BR))
+			err = hci_send_cmd(hdev, HCI_OP_INQUIRY_CANCEL,
+								0, NULL);
+	}
+
+	if (ilp) {
+		ilp->mode = SCAN_IDLE;
+		del_timer_sync(&hdev->disc_le_timer);
+		del_timer_sync(&hdev->disc_timer);
+	}
+
 	if (err < 0 && cmd)
 		mgmt_pending_remove(cmd);
 
 	mgmt_event(MGMT_EV_DISCOVERING, index, &mode_cp, sizeof(mode_cp), NULL);
 
+failed:
 	hci_dev_unlock_bh(hdev);
 	hci_dev_put(hdev);
 
@@ -2818,7 +2822,7 @@ int mgmt_device_found(u16 index, bdaddr_t *bdaddr, u8 type, u8 le,
 			u8 *dev_class, s8 rssi, u8 eir_len, u8 *eir)
 {
 	struct mgmt_ev_device_found ev;
-	struct hci_dev *hdev;
+	struct pending_cmd *cmd;
 	int err;
 
 	BT_DBG("le: %d", le);
@@ -2841,38 +2845,36 @@ int mgmt_device_found(u16 index, bdaddr_t *bdaddr, u8 type, u8 le,
 	if (err < 0)
 		return err;
 
-	hdev = hci_dev_get(index);
+	cmd = mgmt_pending_find(MGMT_OP_STOP_DISCOVERY, index);
+	if (cmd) {
+		struct disco_interleave *ilp = cmd->param;
+		struct hci_dev *hdev = hci_dev_get(index);
 
-	if (!hdev)
-		return 0;
+		ilp->int_count++;
+		if (hdev && ilp->int_count >= ilp->int_phase) {
+			/* Inquiry scan for General Discovery LAP */
+			struct hci_cp_inquiry cp = {{0x33, 0x8b, 0x9e}, 4, 0};
+			struct hci_cp_le_set_scan_enable le_cp = {0, 0};
 
-	if (hdev->disco_state == SCAN_IDLE)
-		goto done;
-
-	hdev->disco_int_count++;
-
-	if (hdev->disco_int_count >= hdev->disco_int_phase) {
-		/* Inquiry scan for General Discovery LAP */
-		struct hci_cp_inquiry cp = {{0x33, 0x8b, 0x9e}, 4, 0};
-		struct hci_cp_le_set_scan_enable le_cp = {0, 0};
-
-		hdev->disco_int_phase *= 2;
-		hdev->disco_int_count = 0;
-		if (hdev->disco_state == SCAN_LE) {
-			/* cancel LE scan */
-			hci_send_cmd(hdev, HCI_OP_LE_SET_SCAN_ENABLE,
-					sizeof(le_cp), &le_cp);
-			/* start BR scan */
-			cp.num_rsp = (u8) hdev->disco_int_phase;
-			hci_send_cmd(hdev, HCI_OP_INQUIRY,
-					sizeof(cp), &cp);
-			hdev->disco_state = SCAN_BR;
-			del_timer_sync(&hdev->disco_le_timer);
+			ilp->int_phase *= 2;
+			ilp->int_count = 0;
+			if (ilp->mode == SCAN_LE) {
+				/* cancel LE scan */
+				hci_send_cmd(hdev, HCI_OP_LE_SET_SCAN_ENABLE,
+							sizeof(le_cp), &le_cp);
+				/* start BR scan */
+				cp.num_rsp = (u8) ilp->int_phase;
+				hci_send_cmd(hdev, HCI_OP_INQUIRY,
+							sizeof(cp), &cp);
+				ilp->mode = SCAN_BR;
+				del_timer_sync(&hdev->disc_le_timer);
+			}
 		}
+
+		if (hdev)
+			hci_dev_put(hdev);
 	}
 
-done:
-	hci_dev_put(hdev);
 	return 0;
 }
 
@@ -2903,29 +2905,3 @@ int mgmt_encrypt_change(u16 index, bdaddr_t *bdaddr, u8 status)
 									NULL);
 }
 
-int mgmt_remote_class(u16 index, bdaddr_t *bdaddr, u8 dev_class[3])
-{
-	struct mgmt_ev_remote_class ev;
-
-	memset(&ev, 0, sizeof(ev));
-
-	bacpy(&ev.bdaddr, bdaddr);
-	memcpy(ev.dev_class, dev_class, 3);
-
-	return mgmt_event(MGMT_EV_REMOTE_CLASS, index, &ev, sizeof(ev), NULL);
-}
-
-int mgmt_remote_version(u16 index, bdaddr_t *bdaddr, u8 ver, u16 mnf,
-							u16 sub_ver)
-{
-	struct mgmt_ev_remote_version ev;
-
-	memset(&ev, 0, sizeof(ev));
-
-	bacpy(&ev.bdaddr, bdaddr);
-	ev.lmp_ver = ver;
-	ev.manufacturer = mnf;
-	ev.lmp_subver = sub_ver;
-
-	return mgmt_event(MGMT_EV_REMOTE_VERSION, index, &ev, sizeof(ev), NULL);
-}

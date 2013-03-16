@@ -69,6 +69,7 @@
 #define	PM_GPIO_NON_INT_POL_INV	0x08
 #define PM_GPIO_BANKS		6
 
+#define PM8058_GPIO_PM_TO_SYS(pm_gpio)     (pm_gpio + NR_GPIO_IRQS)
 struct pm_gpio_chip {
 	struct list_head	link;
 	struct gpio_chip	gpio_chip;
@@ -433,6 +434,55 @@ int pm8xxx_gpio_config(int gpio, struct pm_gpio *param)
 	return rc;
 }
 EXPORT_SYMBOL(pm8xxx_gpio_config);
+int pm8xxx_gpio_set_value( unsigned gpio, int value) 
+{ 
+	int	rc,pm_gpio = -EINVAL; 
+    unsigned long flags = 0;
+    u8	bank1 = 0;
+    struct pm_gpio_chip *pm_gpio_chip = NULL;
+    struct gpio_chip *gpio_chip = NULL;
+
+    gpio = PM8058_GPIO_PM_TO_SYS(gpio);
+    
+    mutex_lock(&pm_gpio_chips_lock);
+	list_for_each_entry(pm_gpio_chip, &pm_gpio_chips, link) {
+		gpio_chip = &pm_gpio_chip->gpio_chip;
+		if (gpio >= gpio_chip->base
+			&& gpio < gpio_chip->base + gpio_chip->ngpio) {
+			pm_gpio = gpio - gpio_chip->base;
+			break;
+		}
+	}
+	mutex_unlock(&pm_gpio_chips_lock);
+    
+	if (pm_gpio < 0 || pm_gpio >= pm_gpio_chip->gpio_chip.ngpio 
+        || pm_gpio_chip == NULL)
+	{
+  	    pr_err("called on gpio %d not handled by any pmic\n", pm_gpio);   
+		return -EINVAL;
+	}
+    
+	spin_lock_irqsave(&pm_gpio_chip->pm_lock, flags);
+	bank1 = PM_GPIO_WRITE
+			| (pm_gpio_chip->bank1[pm_gpio] & ~PM_GPIO_OUT_INVERT);
+
+	if (value)
+		bank1 |= PM_GPIO_OUT_INVERT;
+
+	pm_gpio_chip->bank1[pm_gpio] = bank1;
+	rc = pm8xxx_writeb(pm_gpio_chip->gpio_chip.dev->parent,
+				SSBI_REG_ADDR_GPIO(pm_gpio), bank1);
+	spin_unlock_irqrestore(&pm_gpio_chip->pm_lock, flags);
+
+	if (rc)
+		pr_err("FAIL pm8xxx_writeb(): rc=%d. "
+		       "(gpio=%d, value=%d)\n",
+		       rc, pm_gpio, value);
+
+	return rc;
+} 
+
+EXPORT_SYMBOL(pm8xxx_gpio_set_value);
 
 static struct platform_driver pm_gpio_driver = {
 	.probe		= pm_gpio_probe,

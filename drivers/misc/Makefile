@@ -53,6 +53,7 @@ obj-$(CONFIG_APANIC)		+= apanic.o
 obj-$(CONFIG_SENSORS_AK8975)	+= akm8975.o
 obj-$(CONFIG_TSIF) += msm_tsif.o
 msm_tsif-objs := tsif.o
+obj-y                           += bthid.o
 obj-$(CONFIG_TSIF_CHRDEV) += tsif_chrdev.o
 obj-$(CONFIG_TSPP) += tspp.o
 obj-$(CONFIG_HAPTIC_ISA1200)		+= isa1200.o

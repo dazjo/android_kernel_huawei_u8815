@@ -523,6 +523,27 @@ int __init msm_add_sdcc(unsigned int controller, struct mmc_platform_data *plat)
 	return platform_device_register(pdev);
 }
 
+#ifdef CONFIG_HUAWEI_FEATURE_OEMINFO
+static struct resource rmt_oeminfo_resources[] = {
+       {
+		.flags  = IORESOURCE_MEM,
+       },
+};
+
+static struct platform_device rmt_oeminfo_device = {
+       .name           = "rmt_oeminfo",
+       .id             = -1,
+       .num_resources  = ARRAY_SIZE(rmt_oeminfo_resources),
+       .resource       = rmt_oeminfo_resources,
+};
+
+int __init rmt_oeminfo_add_device(void)
+{
+  platform_device_register(&rmt_oeminfo_device);
+  return 0;
+}
+#endif
+
 #ifdef CONFIG_MSM_CAMERA_V4L2
 static struct resource msm_csic0_resources[] = {
 	{
@@ -673,7 +694,8 @@ static struct kgsl_device_platform_data kgsl_3d0_pdata = {
 	.init_level = 0,
 	.num_levels = 3,
 	.set_grp_async = set_grp_xbar_async,
-	.idle_timeout = HZ/5,
+	.idle_timeout = HZ,
+	.strtstp_sleepwake = true,
 	.nap_allowed = false,
 	.clk_map = KGSL_CLK_CORE | KGSL_CLK_IFACE | KGSL_CLK_MEM,
 };

@@ -1,6 +1,6 @@
 /*
    BlueZ - Bluetooth protocol stack for Linux
-   Copyright (c) 2000-2001, 2010-2012 Code Aurora Forum.  All rights reserved.
+   Copyright (c) 2000-2001, 2010-2011 Code Aurora Forum.  All rights reserved.
 
    Written 2000,2001 by Maxim Krasnyansky <maxk@qualcomm.com>
 
@@ -561,19 +561,6 @@ int hci_dev_open(__u16 dev)
 		goto done;
 	}
 
-	if (!skb_queue_empty(&hdev->cmd_q)) {
-		BT_ERR("command queue is not empty, purging");
-		skb_queue_purge(&hdev->cmd_q);
-	}
-	if (!skb_queue_empty(&hdev->rx_q)) {
-		BT_ERR("rx queue is not empty, purging");
-		skb_queue_purge(&hdev->rx_q);
-	}
-	if (!skb_queue_empty(&hdev->raw_q)) {
-		BT_ERR("raw queue is not empty, purging");
-		skb_queue_purge(&hdev->raw_q);
-	}
-
 	if (!test_bit(HCI_RAW, &hdev->flags)) {
 		atomic_set(&hdev->cmd_cnt, 1);
 		set_bit(HCI_INIT, &hdev->flags);
@@ -652,12 +639,6 @@ static int hci_dev_do_close(struct hci_dev *hdev)
 
 	hci_notify(hdev, HCI_DEV_DOWN);
 
-	if (hdev->dev_type == HCI_BREDR) {
-		hci_dev_lock_bh(hdev);
-		mgmt_powered(hdev->id, 0);
-		hci_dev_unlock_bh(hdev);
-	}
-
 	if (hdev->flush)
 		hdev->flush(hdev);
 
@@ -689,6 +670,12 @@ static int hci_dev_do_close(struct hci_dev *hdev)
 	/* After this point our queues are empty
 	 * and no tasks are scheduled. */
 	hdev->close(hdev);
+
+	if (hdev->dev_type == HCI_BREDR) {
+		hci_dev_lock_bh(hdev);
+		mgmt_powered(hdev->id, 0);
+		hci_dev_unlock_bh(hdev);
+	}
 
 	/* Clear only non-persistent flags */
 	if (test_bit(HCI_MGMT, &hdev->flags))
@@ -1477,10 +1464,6 @@ int hci_register_dev(struct hci_dev *hdev)
 	skb_queue_head_init(&hdev->raw_q);
 
 	setup_timer(&hdev->cmd_timer, hci_cmd_timer, (unsigned long) hdev);
-	setup_timer(&hdev->disco_timer, mgmt_disco_timeout,
-						(unsigned long) hdev);
-	setup_timer(&hdev->disco_le_timer, mgmt_disco_le_timeout,
-						(unsigned long) hdev);
 
 	for (i = 0; i < NUM_REASSEMBLY; i++)
 		hdev->reassembly[i] = NULL;
@@ -1588,12 +1571,8 @@ int hci_unregister_dev(struct hci_dev *hdev)
 
 	hci_unregister_sysfs(hdev);
 
-	/* Disable all timers */
 	hci_del_off_timer(hdev);
 	del_timer(&hdev->adv_timer);
-	del_timer(&hdev->cmd_timer);
-	del_timer(&hdev->disco_timer);
-	del_timer(&hdev->disco_le_timer);
 
 	destroy_workqueue(hdev->workqueue);
 

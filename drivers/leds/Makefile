@@ -49,7 +49,13 @@ obj-$(CONFIG_LEDS_ASIC3)		+= leds-asic3.o
 obj-$(CONFIG_LEDS_PMIC8058)		+= leds-pmic8058.o
 obj-$(CONFIG_LEDS_QCIBL)		+= leds-qci-backlight.o
 obj-$(CONFIG_LEDS_MSM_PDM)		+= leds-msm-pdm.o
+#/* < DTS2010102600914 zhangtao 20101026 begin */
+obj-$(CONFIG_HUAWEI_LEDS_PMIC)		+= leds-msm-pmic.o
+#/* DTS2010102600914 zhangtao 20101026 end > */
 
+obj-$(CONFIG_HUAWEI_KEYBOARD_LEDS)		+= leds-keyboard.o
+obj-$(CONFIG_HUAWEI_FEATURE_PTT_KEY_LIGHT) += leds_ptt.o
+obj-$(CONFIG_HUAWEI_FEATURE_RGB_KEY_LIGHT) += leds_rgb.o
 # LED SPI Drivers
 obj-$(CONFIG_LEDS_DAC124S085)		+= leds-dac124s085.o
 

@@ -216,6 +216,10 @@ msm_i2c_interrupt(int irq, void *devid)
 			err = -EIO;
 			goto out_err;
 		}
+    	if( (dev->msg->addr == 0x1E))//st303_compass address 0x1e
+		{
+			udelay(10);
+		}
 
 		if (dev->cnt) {
 			/* Ready to take a byte */

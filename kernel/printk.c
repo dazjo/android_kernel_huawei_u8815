@@ -978,7 +978,11 @@ asmlinkage int vprintk(const char *fmt, va_list args)
 
 				t = cpu_clock(printk_cpu);
 				nanosec_rem = do_div(t, 1000000000);
+#ifndef CONFIG_HUAWEI_KERNEL
 				tlen = sprintf(tbuf, "[%5lu.%06lu] ",
+#else
+				tlen = sprintf(tbuf, "[%d, %s] [%5lu.%06lu] ", current->pid, current->comm,
+#endif
 						(unsigned long) t,
 						nanosec_rem / 1000);
 

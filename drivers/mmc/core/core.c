@@ -40,6 +40,11 @@
 #include "sd_ops.h"
 #include "sdio_ops.h"
 
+#ifdef CONFIG_HUAWEI_KERNEL
+#include <asm/mach-types.h>
+#define MSM_SDCARD_SCAN_CYCLE	20
+#endif
+
 static struct workqueue_struct *workqueue;
 
 /*
@@ -70,8 +75,14 @@ MODULE_PARM_DESC(
 /*
  * Internal function. Schedule delayed work in the MMC work queue.
  */
+/*we want mmc_schedule_delayed_work to run in source code of msm_sdcc*/
+#ifdef CONFIG_HUAWEI_KERNEL
+int mmc_schedule_delayed_work(struct delayed_work *work,
+				     unsigned long delay)
+#else
 static int mmc_schedule_delayed_work(struct delayed_work *work,
 				     unsigned long delay)
+#endif
 {
 	return queue_delayed_work(workqueue, work, delay);
 }
@@ -250,6 +261,50 @@ void mmc_wait_for_req(struct mmc_host *host, struct mmc_request *mrq)
 
 EXPORT_SYMBOL(mmc_wait_for_req);
 
+
+#ifdef CONFIG_HUAWEI_KERNEL
+#include <asm/delay.h>
+static int panic_wait_done = 0;
+
+static void panic_mmc_wait_done(struct mmc_request *mrq)
+{
+	mmc_wait_done(mrq);
+	panic_wait_done = 1;
+}
+/**
+ *	mmc_panic_start_req - start a request and wait for completion
+ *	@host: MMC host to start command
+ *	@mrq: MMC request to start
+ *
+ *	Start a new MMC custom command request for a host, and dont wait
+ *	for the command to complete. Does not attempt to parse the
+ *	response.
+ */
+void mmc_panic_start_req(struct mmc_host *host, struct mmc_request *mrq)
+{
+	DECLARE_COMPLETION_ONSTACK(complete);
+
+	mrq->done_data = &complete;
+	mrq->done = panic_mmc_wait_done;
+
+	printk("#### mmc_panic_start_req\n");
+	mmc_start_request(host, mrq);
+	
+	panic_wait_done = 0;
+	while(1){
+		if( panic_wait_done == 1){
+			printk("#### MMC IRQ END\n");
+			break;
+		}
+		udelay(100);
+	}
+}
+
+EXPORT_SYMBOL(mmc_panic_start_req);
+#endif
+
+
+
 /**
  *	mmc_wait_for_cmd - start a command and wait for completion
  *	@host: MMC host to start command
@@ -278,6 +333,40 @@ int mmc_wait_for_cmd(struct mmc_host *host, struct mmc_command *cmd, int retries
 }
 
 EXPORT_SYMBOL(mmc_wait_for_cmd);
+
+/**
+ *	mmc_panic_wait_for_cmd - start a command and wait for completion
+ *	@host: MMC host to start command
+ *	@cmd: MMC command to start
+ *	@retries: maximum number of retries
+ *
+ *	Start a new MMC command for a host, and wait for the command
+ *	to complete.  Return any error that occurred while the command
+ *	was executing.  Do not attempt to parse the response.
+ */
+#ifdef CONFIG_HUAWEI_KERNEL
+int mmc_panic_wait_for_cmd(struct mmc_host *host, struct mmc_command *cmd, int retries)
+{
+	struct mmc_request mrq;
+
+	WARN_ON(!host->claimed);
+
+	memset(&mrq, 0, sizeof(struct mmc_request));
+
+	memset(cmd->resp, 0, sizeof(cmd->resp));
+	cmd->retries = retries;
+
+	mrq.cmd = cmd;
+	cmd->data = NULL;
+
+	mmc_panic_start_req(host, &mrq);
+
+	return cmd->error;
+}
+
+EXPORT_SYMBOL(mmc_panic_wait_for_cmd);
+#endif
+
 
 /**
  *	mmc_set_data_timeout - set the timeout for a data command
@@ -1761,8 +1850,22 @@ void mmc_rescan(struct work_struct *work)
 		wake_unlock(&host->detect_wake_lock);
 	if (host->caps & MMC_CAP_NEEDS_POLL) {
 		wake_lock(&host->detect_wake_lock);
-		mmc_schedule_delayed_work(&host->detect, HZ);
-	}
+/*set 20s scan cycle*/
+#ifdef CONFIG_HUAWEI_KERNEL
+        if( (machine_is_msm8255_c8860()) 
+            || (machine_is_msm8255_u8860())
+            || (machine_is_msm8255_u8860_92())
+            || machine_is_msm8255_u8860_r()
+            || (machine_is_msm8255_u8860lp()))
+        {
+            mmc_schedule_delayed_work(&host->detect, MSM_SDCARD_SCAN_CYCLE*HZ);
+        }
+        else
+#endif
+        {
+            mmc_schedule_delayed_work(&host->detect, HZ);
+        }
+    }
 }
 
 void mmc_start_host(struct mmc_host *host)

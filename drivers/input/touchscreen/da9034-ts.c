@@ -2,7 +2,6 @@
  * Touchscreen driver for Dialog Semiconductor DA9034
  *
  * Copyright (C) 2006-2008 Marvell International Ltd.
- *	Fengwei Yin <fengwei.yin@marvell.com>
  *	Bin Yang  <bin.yang@marvell.com>
  *	Eric Miao <eric.miao@marvell.com>
  *

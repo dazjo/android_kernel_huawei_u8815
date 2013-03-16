@@ -103,7 +103,7 @@ struct vmcore {
 #ifdef CONFIG_PROC_FS
 
 extern void proc_root_init(void);
-
+extern void  proc_app_info_init(void);
 void proc_flush_task(struct task_struct *task);
 
 extern struct proc_dir_entry *create_proc_entry(const char *name, mode_t mode,

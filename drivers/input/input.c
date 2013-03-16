@@ -37,6 +37,10 @@ MODULE_LICENSE("GPL");
 static LIST_HEAD(input_dev_list);
 static LIST_HEAD(input_handler_list);
 
+#ifdef CONFIG_HUAWEI_KERNEL
+bool    g_bypass_release_key = false ;
+#endif
+
 /*
  * input_mutex protects access to both input_dev_list and input_handler_list.
  * This also causes input_[un]register_device and input_[un]register_handler
@@ -1569,7 +1573,15 @@ void input_reset_device(struct input_dev *dev)
 
 	if (dev->users) {
 		input_dev_toggle(dev, true);
-
+		
+#ifdef CONFIG_HUAWEI_KERNEL
+        if( !g_bypass_release_key )
+        {
+		    spin_lock_irq(&dev->event_lock);
+		    input_dev_release_keys(dev);
+		    spin_unlock_irq(&dev->event_lock);
+        }
+#else
 		/*
 		 * Keys that have been pressed at suspend time are unlikely
 		 * to be still pressed when we resume.
@@ -1577,6 +1589,7 @@ void input_reset_device(struct input_dev *dev)
 		spin_lock_irq(&dev->event_lock);
 		input_dev_release_keys(dev);
 		spin_unlock_irq(&dev->event_lock);
+#endif
 	}
 
 	mutex_unlock(&dev->mutex);
@@ -1601,9 +1614,15 @@ static int input_dev_suspend(struct device *dev)
 static int input_dev_resume(struct device *dev)
 {
 	struct input_dev *input_dev = to_input_dev(dev);
+#ifdef CONFIG_HUAWEI_KERNEL
+    g_bypass_release_key = true ;
+#endif
 
 	input_reset_device(input_dev);
 
+#ifdef CONFIG_HUAWEI_KERNEL
+    g_bypass_release_key = false ;
+#endif
 	return 0;
 }
 
