@@ -126,16 +126,9 @@ bool lcd_debug_malloc_get_para(char *para_name, void **para_table,uint32_t *para
    	fd = sys_open((const char __force *) HW_LCD_INIT_TEST_PARAM, O_RDONLY, 0);
 	if (fd < 0) 
 	{
-		printk(KERN_WARNING "%s: Can not open %s\n",
-			__func__, HW_LCD_INIT_TEST_PARAM);
 		return FALSE;
 	}
 	
-	
-	printk(KERN_WARNING "%s: Config file %s already opened. \n",
-			__func__, HW_LCD_INIT_TEST_PARAM);
-	
-
 	//resolve the config file
 	ret = lcd_resolve_config_file(fd,para_name, &table_tmp,&num_tmp);
 	sys_close(fd);
