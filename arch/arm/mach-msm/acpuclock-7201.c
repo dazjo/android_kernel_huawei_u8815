@@ -509,14 +509,14 @@ static void acpuclk_set_div(const struct clkctl_acpu_speed *hunt_s)
 	/* AHB_CLK_DIV */
 	clk_div = (reg_clksel >> 1) & 0x03;
 
-	#ifdef CONFIG_MSM7X27AA_OVERCLOCK
+#ifdef CONFIG_MSM7X27AA_OVERCLOCK
 	// Perform overclocking if requested
 	if (hunt_s->a11clk_khz > 1008000) {
 		// Change the speed of PLL4
 		writel(hunt_s->a11clk_khz/19200, PLL4_L_VAL);
 		udelay(50);
 	}
-	#endif
+#endif
  
 	/* CLK_SEL_SRC1NO */
 	src_sel = reg_clksel & 1;
@@ -542,14 +542,14 @@ static void acpuclk_set_div(const struct clkctl_acpu_speed *hunt_s)
 	reg_clksel ^= 1;
 	writel_relaxed(reg_clksel, A11S_CLK_SEL_ADDR);
 
-	#ifdef CONFIG_MSM7X27AA_OVERCLOCK
+#ifdef CONFIG_MSM7X27AA_OVERCLOCK
 	// Recover from overclocking
 	if (hunt_s->a11clk_khz<=1008000) {
 		// Restore the speed of PLL4
 		writel(PLL_1008_MHZ, PLL4_L_VAL);
 		udelay(50);
 	}
-	#endif
+#endif
 
 	/*
 	 * If the new clock divider is lower than the previous, then
