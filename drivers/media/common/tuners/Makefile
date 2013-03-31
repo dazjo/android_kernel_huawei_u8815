@@ -29,3 +29,6 @@ obj-$(CONFIG_MEDIA_TUNER_TDA18212) += tda18212.o
 
 EXTRA_CFLAGS += -Idrivers/media/dvb/dvb-core
 EXTRA_CFLAGS += -Idrivers/media/dvb/frontends
+
+# For GCC 4.6
+CFLAGS_max2165.o = -Wno-maybe-uninitialized

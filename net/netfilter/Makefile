@@ -115,3 +115,8 @@ obj-$(CONFIG_IP_SET) += ipset/
 
 # IPVS
 obj-$(CONFIG_IP_VS) += ipvs/
+
+# For GCC 4.6
+CFLAGS_nf_conntrack_core.o = -Wno-address
+CFLAGS_nf_conntrack_proto.o = -Wno-address
+CFLAGS_xt_qtaguid.o = -Wno-maybe-uninitialized

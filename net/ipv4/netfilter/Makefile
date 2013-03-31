@@ -69,3 +69,14 @@ obj-$(CONFIG_IP_NF_ARP_MANGLE) += arpt_mangle.o
 obj-$(CONFIG_IP_NF_ARPFILTER) += arptable_filter.o
 
 obj-$(CONFIG_IP_NF_QUEUE) += ip_queue.o
+
+# For GCC 4.6
+CFLAGS_nf_nat_standalone.o = -Wno-address
+CFLAGS_nf_nat_core.o = -Wno-address
+CFLAGS_nf_nat_amanda.o = -Wno-address
+CFLAGS_nf_nat_ftp.o = -Wno-address
+CFLAGS_nf_nat_h323.o = -Wno-address
+CFLAGS_nf_nat_pptp.o = -Wno-address
+CFLAGS_nf_nat_irc.o = -Wno-address
+CFLAGS_nf_nat_sip.o = -Wno-address
+CFLAGS_nf_nat_tftp.o = -Wno-address
