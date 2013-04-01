@@ -58,3 +58,6 @@ obj-$(CONFIG_KGDB_KDB) += trace_kdb.o
 endif
 
 libftrace-y := ftrace.o
+
+# For GCC 4.6
+CFLAGS_board-msm7x27a.o = -Wno-maybe-uninitialized
