@@ -750,6 +750,7 @@ static int bluesleep_probe(struct platform_device *pdev)
 		ret = gpio_request(bsi->ext_wake, "bt_ext_wake");
 		if (ret)
 			goto free_bt_host_wake;
+	}
 
 	bsi->host_wake_irq = platform_get_irq_byname(pdev, "host_wake");
 	if (bsi->host_wake_irq < 0) {
