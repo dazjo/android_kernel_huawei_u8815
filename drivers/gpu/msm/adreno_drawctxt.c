@@ -138,7 +138,6 @@ int adreno_drawctxt_create(struct kgsl_device *device,
 
 	drawctxt->pagetable = pagetable;
 	drawctxt->bin_base_offset = 0;
-	drawctxt->id = context->id;
 
 	if (flags & KGSL_CONTEXT_PREAMBLE)
 		drawctxt->flags |= CTXT_FLAGS_PREAMBLE;
@@ -172,12 +171,10 @@ void adreno_drawctxt_destroy(struct kgsl_device *device,
 			  struct kgsl_context *context)
 {
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
-	struct adreno_context *drawctxt;
+	struct adreno_context *drawctxt = context->devctxt;
 
-	if (context == NULL || context->devctxt == NULL)
+	if (drawctxt == NULL)
 		return;
-
-	drawctxt = context->devctxt;
 
 	/* deactivate context */
 	if (adreno_dev->drawctxt_active == drawctxt) {
@@ -195,7 +192,7 @@ void adreno_drawctxt_destroy(struct kgsl_device *device,
 	adreno_idle(device, KGSL_TIMEOUT_DEFAULT);
 
 	if (adreno_is_a20x(adreno_dev))
-		kgsl_setstate(device, context->id, KGSL_MMUFLAGS_PTUPDATE);
+		kgsl_setstate(device, KGSL_MMUFLAGS_PTUPDATE);
 
 	kgsl_sharedmem_free(&drawctxt->gpustate);
 	kgsl_sharedmem_free(&drawctxt->context_gmem_shadow.gmemshadow);
@@ -253,7 +250,7 @@ void adreno_drawctxt_switch(struct adreno_device *adreno_dev,
 		if (adreno_dev->gpudev->ctxt_draw_workaround &&
 			adreno_is_a225(adreno_dev))
 				adreno_dev->gpudev->ctxt_draw_workaround(
-					adreno_dev, drawctxt);
+					adreno_dev);
 		return;
 	}
 
@@ -264,8 +261,6 @@ void adreno_drawctxt_switch(struct adreno_device *adreno_dev,
 	adreno_dev->gpudev->ctxt_save(adreno_dev, adreno_dev->drawctxt_active);
 
 	/* Set the new context */
-	adreno_dev->gpudev->ctxt_restore(adreno_dev, drawctxt);
 	adreno_dev->drawctxt_active = drawctxt;
+	adreno_dev->gpudev->ctxt_restore(adreno_dev, drawctxt);
 }
-
-

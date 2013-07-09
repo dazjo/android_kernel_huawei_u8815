@@ -1170,7 +1170,7 @@ kgsl_ioctl_sharedmem_from_vmalloc(struct kgsl_device_private *dev_priv,
 		goto error;
 	}
 
-	result = kgsl_sharedmem_vmalloc_user(&entry->memdesc,
+	result = kgsl_sharedmem_page_alloc_user(&entry->memdesc,
 					     private->pagetable, len,
 					     param->flags);
 	if (result != 0)
@@ -1181,7 +1181,7 @@ kgsl_ioctl_sharedmem_from_vmalloc(struct kgsl_device_private *dev_priv,
 	result = kgsl_sharedmem_map_vma(vma, &entry->memdesc);
 	if (result) {
 		KGSL_CORE_ERR("kgsl_sharedmem_map_vma failed: %d\n", result);
-		goto error_free_vmalloc;
+		goto error_free_alloc;
 	}
 
 	param->gpuaddr = entry->memdesc.gpuaddr;
@@ -1196,7 +1196,7 @@ kgsl_ioctl_sharedmem_from_vmalloc(struct kgsl_device_private *dev_priv,
 	kgsl_check_idle(dev_priv->device);
 	return 0;
 
-error_free_vmalloc:
+error_free_alloc:
 	kgsl_sharedmem_free(&entry->memdesc);
 
 error_free_entry:
@@ -1495,11 +1495,8 @@ static int kgsl_setup_ion(struct kgsl_mem_entry *entry,
 	struct scatterlist *s;
 	unsigned long flags;
 
-	if (kgsl_ion_client == NULL) {
-		kgsl_ion_client = msm_ion_client_create(UINT_MAX, KGSL_NAME);
-		if (kgsl_ion_client == NULL)
-			return -ENODEV;
-	}
+	if (IS_ERR_OR_NULL(kgsl_ion_client))
+		return -ENODEV;
 
 	handle = ion_import_fd(kgsl_ion_client, fd);
 	if (IS_ERR_OR_NULL(handle))
@@ -1899,7 +1896,7 @@ static const struct {
 static long kgsl_ioctl(struct file *filep, unsigned int cmd, unsigned long arg)
 {
 	struct kgsl_device_private *dev_priv = filep->private_data;
-	unsigned int nr;
+	unsigned int nr = _IOC_NR(cmd);
 	kgsl_ioctl_func_t func;
 	int lock, ret;
 	char ustack[64];
@@ -1914,8 +1911,6 @@ static long kgsl_ioctl(struct file *filep, unsigned int cmd, unsigned long arg)
 		cmd = IOCTL_KGSL_CMDSTREAM_FREEMEMONTIMESTAMP;
 	else if (cmd == IOCTL_KGSL_CMDSTREAM_READTIMESTAMP_OLD)
 		cmd = IOCTL_KGSL_CMDSTREAM_READTIMESTAMP;
-
-	nr = _IOC_NR(cmd);
 
 	if (cmd & (IOC_IN | IOC_OUT)) {
 		if (_IOC_SIZE(cmd) < sizeof(ustack))
@@ -1941,20 +1936,7 @@ static long kgsl_ioctl(struct file *filep, unsigned int cmd, unsigned long arg)
 	}
 
 	if (nr < ARRAY_SIZE(kgsl_ioctl_funcs) &&
-		kgsl_ioctl_funcs[nr].func != NULL) {
-
-		/*
-		 * Make sure that nobody tried to send us a malformed ioctl code
-		 * with a valid NR but bogus flags
-		 */
-
-		if (kgsl_ioctl_funcs[nr].cmd != cmd) {
-			KGSL_DRV_ERR(dev_priv->device,
-				"Malformed ioctl code %08x\n", cmd);
-			ret = -ENOIOCTLCMD;
-			goto done;
-		}
-
+	    kgsl_ioctl_funcs[nr].func != NULL) {
 		func = kgsl_ioctl_funcs[nr].func;
 		lock = kgsl_ioctl_funcs[nr].lock;
 	} else {
@@ -2272,6 +2254,8 @@ int kgsl_device_platform_probe(struct kgsl_device *device,
 	if (status)
 		goto error;
 
+	kgsl_ion_client = msm_ion_client_create(UINT_MAX, KGSL_NAME);
+
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM,
 					   device->iomemname);
 	if (res == NULL) {
@@ -2360,8 +2344,8 @@ EXPORT_SYMBOL(kgsl_device_platform_remove);
 static int __devinit
 kgsl_ptdata_init(void)
 {
-	kgsl_driver.ptpool = kgsl_mmu_ptpool_init(kgsl_pagetable_count);
-
+	kgsl_driver.ptpool = kgsl_mmu_ptpool_init(KGSL_PAGETABLE_SIZE,
+						kgsl_pagetable_count);
 	if (!kgsl_driver.ptpool)
 		return -ENOMEM;
 	return 0;
@@ -2369,22 +2353,30 @@ kgsl_ptdata_init(void)
 
 static void kgsl_core_exit(void)
 {
-	unregister_chrdev_region(kgsl_driver.major, KGSL_DEVICE_MAX);
-
-	kgsl_mmu_ptpool_destroy(&kgsl_driver.ptpool);
+	kgsl_mmu_ptpool_destroy(kgsl_driver.ptpool);
 	kgsl_driver.ptpool = NULL;
 
-	device_unregister(&kgsl_driver.virtdev);
+	kgsl_drm_exit();
+	kgsl_cffdump_destroy();
+	kgsl_core_debugfs_close();
+
+	/*
+	 * We call kgsl_sharedmem_uninit_sysfs() and device_unregister()
+	 * only if kgsl_driver.virtdev has been populated.
+	 * We check at least one member of kgsl_driver.virtdev to
+	 * see if it is not NULL (and thus, has been populated).
+	 */
+	if (kgsl_driver.virtdev.class) {
+		kgsl_sharedmem_uninit_sysfs();
+		device_unregister(&kgsl_driver.virtdev);
+	}
 
 	if (kgsl_driver.class) {
 		class_destroy(kgsl_driver.class);
 		kgsl_driver.class = NULL;
 	}
 
-	kgsl_drm_exit();
-	kgsl_cffdump_destroy();
-	kgsl_core_debugfs_close();
-	kgsl_sharedmem_uninit_sysfs();
+	unregister_chrdev_region(kgsl_driver.major, KGSL_DEVICE_MAX);
 }
 
 static int __init kgsl_core_init(void)
