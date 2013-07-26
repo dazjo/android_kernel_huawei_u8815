@@ -19,5 +19,5 @@ obj-$(CONFIG_MTD_DATAFLASH)	+= mtd_dataflash.o
 obj-$(CONFIG_MTD_M25P80)	+= m25p80.o
 obj-$(CONFIG_MTD_SST25L)	+= sst25l.o
 
-# For GCC 4.6
-CFLAGS_msm_nand.o = -Wno-maybe-uninitialized
+# For GCC 4.7
+CFLAGS_msm_nand.o = -Wno-uninitialized

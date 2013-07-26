@@ -32,3 +32,7 @@ EXTRA_CFLAGS += -Idrivers/media/dvb/frontends
 
 # For GCC 4.6
 CFLAGS_max2165.o = -Wno-maybe-uninitialized
+
+# For GCC 4.7
+CFLAGS_tda18212.o = -Wno-maybe-uninitialized
+CFLAGS_tda18218.o = -Wno-maybe-uninitialized
