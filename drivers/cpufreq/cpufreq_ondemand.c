@@ -364,6 +364,12 @@ static ssize_t store_boostfreq(struct kobject *a, struct attribute *b,
 	return count;
 }
 
+static ssize_t show_powersave_bias
+(struct kobject *kobj, struct attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", dbs_tuners_ins.powersave_bias);
+}
+
 static ssize_t store_sampling_rate(struct kobject *a, struct attribute *b,
 				   const char *buf, size_t count)
 {
