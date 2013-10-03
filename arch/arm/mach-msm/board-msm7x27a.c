@@ -45,6 +45,9 @@
 #include <mach/msm_battery.h>
 #include <linux/smsc911x.h>
 #include <linux/atmel_maxtouch.h>
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+#include <linux/persistent_ram.h>
+#endif
 #include "devices.h"
 #include "timer.h"
 #include "board-msm7x27a-regulator.h"
@@ -71,8 +74,35 @@ static ssize_t  buf_vkey_size=0;
 #include <linux/nfc/pn544.h>
 #endif
 
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+#define MSM7X27_EBI1_CS0_BASE PHYS_OFFSET
+#define MSM7X27_EBI1_CS0_SIZE 0xFD00000
+
+#define MSM_RAM_CONSOLE_START (MSM7X27_EBI1_CS0_BASE + MSM7X27_EBI1_CS0_SIZE)
+#define MSM_RAM_CONSOLE_SIZE (128 * SZ_1K * 2)
+#endif
+
 #define PMEM_KERNEL_EBI1_SIZE	0x3A000
 #define MSM_PMEM_AUDIO_SIZE	0x5B000
+
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+struct persistent_ram_descriptor ram_console_desc = {
+        .name = "ram_console",
+        .size = MSM_RAM_CONSOLE_SIZE - 1,
+};
+
+struct persistent_ram ram_console_ram = {
+        .start = MSM_RAM_CONSOLE_START,
+        .size = MSM_RAM_CONSOLE_SIZE - 1,
+        .num_descs = 1,
+        .descs = &ram_console_desc,
+};
+
+static struct platform_device ram_console_device = {
+	.name = "ram_console",
+	.id = -1,
+};
+#endif
 
 #if defined(CONFIG_GPIO_SX150X)
 enum {
@@ -1294,6 +1324,9 @@ static struct platform_device *surf_ffa_devices[] __initdata = {
 #endif
 #ifdef CONFIG_HUAWEI_HW_DEV_DCT
 	&huawei_device_detect,
+#endif
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+	&ram_console_device,
 #endif
 };
 
@@ -2641,6 +2674,9 @@ int __init hw_extern_sdcard_add_device(void)
 static void __init msm7x2x_init_early(void)
 {
 	msm_msm7x2x_allocate_memory_regions();
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+	persistent_ram_early_init(&ram_console_ram);
+#endif
 }
 
 MACHINE_START(MSM7X27A_RUMI3, "QCT MSM7x27a RUMI3")
