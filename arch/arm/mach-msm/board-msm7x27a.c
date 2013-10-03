@@ -87,15 +87,15 @@ static ssize_t  buf_vkey_size=0;
 
 #ifdef CONFIG_ANDROID_RAM_CONSOLE
 struct persistent_ram_descriptor ram_console_desc = {
-        .name = "ram_console",
-        .size = MSM_RAM_CONSOLE_SIZE - 1,
+	.name = "ram_console",
+	.size = MSM_RAM_CONSOLE_SIZE - 1,
 };
 
 struct persistent_ram ram_console_ram = {
-        .start = MSM_RAM_CONSOLE_START,
-        .size = MSM_RAM_CONSOLE_SIZE - 1,
-        .num_descs = 1,
-        .descs = &ram_console_desc,
+	.start = MSM_RAM_CONSOLE_START,
+	.size = MSM_RAM_CONSOLE_SIZE - 1,
+	.num_descs = 1,
+	.descs = &ram_console_desc,
 };
 
 static struct platform_device ram_console_device = {
